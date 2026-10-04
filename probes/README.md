@@ -1,0 +1,179 @@
+# probes/ — verification harness for this mode
+
+These scripts check the mode at three levels: that it **mounts**, that its
+**guards behave**, and that its **declarations and docs still match reality**.
+They live inside the package (not in the DSH installation workspace) so they
+travel with the mode and can be run from a checkout.
+
+Every probe is standalone; each exits non-zero on failure and prints a JSON
+summary. `<install>` below means the DSH installation directory (the one holding
+`DeepSeek Harness.exe` and `resources/app.asar`); the harness finds it from this
+file's own location, and `DSH_ASAR` / `DSH_EXE` override it.
+
+## How to run
+
+The probes marked **Electron** in the table below need the **Electron binary**,
+because they load the host's module resolution from the asar (`@deepseek-ai/*` only
+resolves that way) — `acceptance`, `compact-gate`, `pit-guard`, `budget`,
+`budget-chain`, `gate`, `gate-journal` and `aegis-activation`. Note that a confined
+session channel cannot start that binary at all (measured 2026-10-03: no output,
+empty `$LASTEXITCODE`), which is why `handover-grant-probe.mjs` exists — it covers
+the handover branch under plain Node, where the Electron probe is unreachable.
+
+**Corrected 2026-10-04: that symptom is about output, not about launching.** In a
+Low-integrity session channel the binary *does* start and the probe *does* run —
+`-e "require('node:fs').writeFileSync(<path>,'x')"` came back exit 0 with the file
+written, while `console.log` from the same child was invisible to the caller. So
+"no output, empty `$LASTEXITCODE`" is the signature of **lost stdout**, and reading
+it as "the binary could not start" will make you skip a probe that is in fact
+green. What such a channel genuinely refuses is narrower, and each is a real error
+rather than a silence: spawning a child (`EPERM: spawnSync ... cmd.exe`), writing a
+pre-existing **subdirectory** of the workspace (`EPERM`), and — measured the same
+day — writing the workspace **root** from `code_verify`'s shell (`EPERM`), though
+the `pwsh` tool's shell can. Judge these probes by their **report artifact**, never
+by whether the caller saw text.
+
+**A sandboxed channel reports those probes as failures rather than as unreachable,
+and the number is misleading.** Measured 2026-10-04 with `danger-full-access` removed:
+`budget-probe` came back `{"total":1,"passed":0,"failed":["1.import"]}` and `gate-probe`
+the same, both with `ERR_MODULE_NOT_FOUND` for `@deepseek-ai/dsh-app-boot` — a probe that
+never got past its own import line, wearing the shape of a one-check failure. Run through
+the binary in the same second, the identical files report `29/29` and `39/39`. So before
+believing a low count from an **Electron** probe, check *how it was invoked*: `node
+probes/x.mjs` cannot resolve the host's modules, and that is a property of the channel,
+not of the code. (The asar is an archive, so no amount of file policy puts that module on
+disk for plain Node — this is why `debt-audit`'s R5-R8 read 19/23 in a sandbox and 23/23
+outside it.)
+
+**That R5–R8 gap is closed as of 2026-10-04, and it changed the numbers here.** `debt-audit`
+now spawns the Electron probes itself with `stdio: 'ignore'` and reads the verdict from the
+file (`DSH_PROBE_REPORT`), because a piped stdio is what a confined channel refuses. Measured
+in a Low-integrity session channel with plain Node: `debt-audit` → `23/23`, `"unavailable": []`,
+and R5 logs `acceptance-probe.mjs exit 0, 24/24` alongside `compact-gate 35/35`, `pit-guard
+24/24`, `guard 45/45`. So on this host `node probes/debt-audit.mjs` **does** exercise the
+Electron probes, and a low count is a finding about the code rather than about the channel.
+
+```powershell
+$env:ELECTRON_RUN_AS_NODE='1'
+& '<install>\DeepSeek Harness.exe' --expose-internals '<pkg>\probes\acceptance-probe.mjs' 2>&1 | Out-String
+```
+
+The rest only need a plain Node:
+
+```powershell
+& '<node>' '<pkg>\probes\guard-probe.mjs'
+```
+
+Use `2>&1 | Out-String` when capturing; `*>` redirection silently loses the
+output of this Electron-in-node-mode process.
+
+`2>&1 | Out-String` is what a **human terminal** needs. A caller that captures
+per-command output (`code_verify`, a wrapper that reads only the reported stdout)
+may receive **nothing at all** even though the probe ran to completion — measured
+2026-10-04 on `acceptance-probe.mjs`: the identical command came back `exit 0, but
+the expected output never appeared` with an empty tail, while the same second's
+`pwsh` run printed the full `{"passed":24,"total":24,"failed":[]}`. For those
+callers, point the probe's own report at a fixed absolute path and read the
+verdict from the file instead of from stdout:
+
+```powershell
+$env:ELECTRON_RUN_AS_NODE='1'
+$env:DSH_PROBE_REPORT='<absolute path outside $env:TEMP>'
+& '<install>\DeepSeek Harness.exe' --expose-internals '<pkg>\probes\acceptance-probe.mjs'
+Get-Content -LiteralPath $env:DSH_PROBE_REPORT -Raw | ConvertFrom-Json
+```
+
+The path must be absolute: `$env:TEMP` is a **per-command** directory in a
+confined channel (as is `os.tmpdir()` inside the probe), so the default report is
+gone by the time the next command looks for it. `DSH_PROBE_REPORT` is also the
+only channel that survives a caller which cannot forward stdout at all.
+
+## What each one covers
+
+| probe | runtime | checks | what a failure means |
+|---|---|---|---|
+| `acceptance-probe.mjs` | Electron | 24 | a module failed to import or register, or a tool stopped working end to end — **the preset row would not mount**, which is the most severe class. Also covers the write-time check on a mistake's `trigger:` (a pattern that does not compile is refused instead of silently never firing, and `triggerSample` proves the pattern catches what it is for) |
+| `compact-gate-probe.mjs` | Electron | 35 | the compaction gate regressed: the warn/ask/granted boundaries (including the floating-point one — `0.8 + 0.05` is not `0.85`, so the boundary is compared at a fixed precision), one warning per crossing and re-arming only after occupancy drops back, the question being asked *before* the step runs, what each of the three answers does, and — the half that matters most — that it **falls open** on every failure to ask (timeout, no answerer, unrecognised answer, unknown window, a throwing meter). Four checks pin the mounting: `R1` asserts the installed engine's own default (0.8) as a literal instead of comparing it with the gate's library default, which is how two copies of one default managed to agree while the feature never ran; `R2`/`R4` confirm the gate row precedes the engine row in the preset text and sits in the same group (delivery, **not** runtime call order, which nothing here measures); and `R5`/`R6` hold the declared line below the 80% ceiling real sessions actually reach (0.75 with the warning at 0.6) and confirm those ratios survive `resolveLimits`. Added 2026-10-03, after measuring that all 30 of the checks that existed then drove a stub window of 100,000 while every real session resolves 1,000,000 — and none of them had ever reached the old 0.8 line. **This probe still does not read a real session**; `gate-chance.mjs` is the one that does. `G7`/`G8`/`G9` were added the same day with the handover fix: choosing "Write the handover" takes the same `marginRatio` grant as "Let me continue", so one decision is not followed by a second card, while the warning is re-armed so the crossing that reaches the engine's line is still announced |
+| `journal-rotation-probe.mjs` | node | 5 | the journal stopped being bounded. The journal is the only ledger file with no ceiling above it *and* read whole, so past the segment size it is renamed aside and a fresh one starts. The check that matters is `J2`: **no line is lost and the order across segments is the order written** — rotation that dropped or reordered a line would corrupt the evidence the completion gate reads. `J3` proves a briefing reader still finds a line that now lives in a rotated segment (driven through `brief`'s debt section, not through the helper). `J4`/`J5` were rewritten on 2026-10-04: `J4` used to assert "rotation only ever renames, nothing deletes a segment", which the ledger-core audit's F5 showed cannot hold — once the highest slot was occupied the shift had nowhere to put the oldest segment, so rotation stopped **forever** and the live journal grew without bound (the real ledger: 1 of 9 slots used, 319 KB of a 524 KB threshold). `J4` now asserts what still must hold (every segment a reader is given exists and is readable; only the oldest is ever retired) and `J5` pre-fills the highest slot — the state that used to stall — and requires rotation to keep rotating with the window bounded. The rotation control is part of the fix's verification: the old rule fails that same assertion |
+| `write-rule-probe.mjs` | node | 12 | the ledger's write-side and accounting behaviours regressed. **Length/unfindable advisories**: the briefing is bounded by construction, so a ledger outgrows it entirely through **new entries** — an over-long entry is reported as unusually long, and one with neither `files:` nor `trigger:` as unfindable; both are **recorded anyway** and both are warnings, and `W4` pins the other direction (a short entry carrying a coordinate gets no warning at all). **Hit accounting** (`W7`/`W8`): a `trigger_hit` and a `file_hit` land in the journal as their own kinds and are counted per heading, which is what finally gave the file side — the wider half, 31 of 35 pits here — a "has this ever arrived" statistic. **Restart tracking** (`W9`–`W12`): a dormant `lib/` edit is carried into the briefing and settles when a `session_start` follows it, because a later process is what loaded the change. Writing those four found **three** real bugs in the feature itself: the notice was clipped away by `clipTail` (it must be a reserved *notice*), `brief` was writing a session start — a read function mutating the ledger, which made an empty journal section non-empty and broke an unrelated guard check — and two successive boot-comparison designs both failed to settle, so the mechanism is now pure event *order* with no clock in it at all |
+| `mode-cost.mjs` | node | — | a report: what running in `code` mode costs in prompt tokens. It reads the session logs and separates the two halves the ledger's own claim distinguishes — the **per-request prefix** (the protocol section in the system message, plus the tool catalog the host sends) from the **per-use** results of `code_brief`/`code_record`/`code_verify`, which land in the message stream and cannot be cached across a change. Measured on this host 2026-10-03, across 24 sessions that actually used the tools: 635 ledger-tool calls, mean 586 chars ≈ 158 tokens per call, median session ≈ 2,352 tokens of ledger output. That is the number to quote when someone asks whether the mode is expensive |
+| `hindsight-cost.mjs` | node | — | a report that answers "did the memory plugin inflate my prompt?" with evidence instead of a guess. It scans every session log for the plugin's *own* injected markers (`bank_id`, `vectorize.io`, `hindsight_knowledge`) and reports the distinct mention forms, so a bare word count cannot be mistaken for injection. Measured 2026-10-03 over 103 logs: exactly **1** carries the plugin's text, and the 23 logs that merely mention the word are a different, unrelated AstrBot plugin. Two traps are recorded in its header: uncached input inflates for reasons that have nothing to do with a plugin (a system-prompt edit, a resumed conversation), and a marker search must include the plugin's identifiers or it measures prose |
+| `brief-full-probe.mjs` | node | 4 | `code_brief({full:true})` stopped being worth asking for. The default ranks entries and indexes the rest, which is right until the reader does not yet know what to search for; `full` lifts the per-section division so every section may spend its ceiling. `B2` asserts what the feature is for — **strictly more entries reachable** (whole entries plus index lines, since an entry named in the index is findable and one in neither list is invisible) — and `B3` asserts it is still bounded, because the largest bounded view is not the whole file. Writing this probe cost three wrong measurements before it was right: `## ` starts both a section and an entry, empty sections are omitted entirely, and a clipped body is *indented*, so matching raw lines missed every index line |
+| `promotion-probe.mjs` | node | 6 | the cross-project half of the `scope="global"` decision regressed. The design's test for which ledger a fact belongs in is "would this bite you again in a *different* project", and nothing measured "different project" until now: `pit-liveness` replayed a trigger only against commands recorded in **this** project, so a rule that bit in three repositories was indistinguishable from one that bit three times here. `P1`/`P2` prove two distinct project roots produce one candidate carrying both roots; `P3`/`P4` prove the negative — a repeat inside one project is not a second project, and repeats collapse to a single root so they cannot manufacture a candidate. It calls `crossProjectTriggers` directly instead of spawning `pit-liveness.mjs`, because a child with piped stdio is refused in a confined channel (`EPERM: spawn`) and the *scan* is what needs testing, not the report |
+| `syntax-check.mjs` | node | 14 | the modules this repo edits actually parse as ESM. Written because `node --check` is a **false witness** here — it exits 0 on a broken `.js` because it does not parse the file as a module — and because every other probe has to *run* a module to notice it is broken, which the Electron ones cannot do in a confined channel. Parses `lib/*.js` and the probes with `vm.SourceTextModule`, so it catches a syntax error with no host and no side effects. **Needs `--experimental-vm-modules`**: without the flag `SourceTextModule` is undefined and it reports `unavailable` rather than dressing a missing flag as 14 broken files (measured 2026-10-04 — the earlier behaviour cost a diagnosis round, and it is on the audit's run list, so the reason has to be visible in the report). Not a substitute for running the code: it proves nothing about behaviour || `audit-child-env-probe.mjs` | node | 4 | the way `debt-audit` reads its children's verdicts regressed. The audit spawns probes and reads each verdict from a report *file* (a confined channel cannot carry a child's stdout), and that read is the part that lied: with `DSH_PROBE_REPORT` set — exactly what `code_verify` and every wrapper do — the children inherited it, five of them wrote their verdicts to the audit's **own** sink, and R5–R8 reported a passing suite as 19/23. `C2` reproduces that leak on a real child instead of describing it; `C1` runs the whole audit twice under a caller-set sink and requires all nine children reported and both runs to agree; `C3` pins the trap a tidy-looking fix falls into — `guard-probe.mjs` ignores the variable and hard-codes `tempReport(...)`, so the read must use each probe's own default name (pointing it at a private directory made five passing probes read as `reported=false`); `C4` proves the caller's path still holds the audit's own verdict. Deliberately **not** in `debt-audit`'s run list: it spawns the audit, so listing it would recurse |
+| `handover-grant-probe.mjs` | node | 12 | the handover branch of `lib/compact-gate.js` regressed: the margin it takes, the warning it re-arms, the instruction it emits (it must still name `code_record`, `HANDOVER.md` and a new conversation rather than an imminent compaction), **that it forbids summarising the conversation and points at the ledger — `mistakes.md`/`decisions.md`/`journal.jsonl` — for everything durable**, that it asks for the cautions and keeps verified apart from unverified, that the step is released rather than held, and that the config surface still carries exactly the preset's five keys. It exists because `compact-gate-probe.mjs` **cannot run in a confined session channel** — that one loads host resolution out of `app.asar` and needs the Electron binary, which such a channel will not start (measured 2026-10-03: no output at all, empty `$LASTEXITCODE`). This probe stubs the library's only two bare imports and drives the real `agent/pre-step` handler under plain Node, so the behaviour is measured by execution where the full probe is unreachable. It is a reachable probe, **not** a replacement: boundaries, recovery, fail-open and preset wiring remain `compact-gate-probe`'s job |
+| `pit-guard-probe.mjs` | Electron | 24 | the read side regressed: a pit touching the edited file, or matching the command's `trigger:`, is no longer announced (in either ledger); a failing turn records no debt; or the debt stopped surfacing/settling |
+| `guard-probe.mjs` | node | 45 | a ledger guard regressed: briefing budget, machine-wide (`scope="global"`) reads and writes — including that a section full of facts still shows a pit and names what it dropped, **that machine facts are ranked by recency and named with their size when they do not fit** (measured 2026-10-03: 9 facts cost 1,748 characters against a 1,100-character ceiling, and the old loop dropped the *longest* fact first — which was also the most valuable) — "done" evidence gating, board placement/self-healing, **debt settlement** (a debt may only be cleared by proof that *covers* it — same subtree, or the file named in the command or its output — and proof that does not cover it must be counted and named rather than silently deleting the section), and **concurrent writers** (four processes appending at once lose nothing and leave no lock behind). Added 2026-10-03, when both ledgers had grown past what a briefing can hold: **A6/A7** prove a 40-entry ledger still briefs inside the budget *and* that a query reaches an entry the brief could not show, in full; **I1–I5** prove a pit that can arrive on its own outranks newer prose-only pits, that recording the same pit twice merges it into one entry marked `recurred:` and ranks it first, that a query reaches the machine-wide ledger (96% of the rules were unreachable by any query before), and that bounding the brief never trims the file. **H1/H2 no longer need a pipe**: the writer children report through a file with `stdio: 'ignore'`, so the race really runs in confined channels too — where they still cannot be spawned at all they are reported as `skipped` (never a pass, never a failure) |
+| `budget-probe.mjs` | Electron | 29 | the read-size denial or the trim algorithm regressed. Fixtures go to the OS temp dir; the three `budget-report.*` artifacts are rewritten in `probes/` when the channel can write, and their absence is reported on stderr instead of failing the checks (the exit code always reflects the checks) |
+| `budget-chain-probe.mjs` | Electron | 16 | the trim chain or the `code_brief` tool surface regressed |
+| `gate-probe.mjs` | Electron | 39 | the `code-gate` event chain regressed (notice, journal debt, doc-extension exemptions, turn ordering, and the split between "a command ran" and "a command's evidence was recorded"). Default stdout is one compact line (`summary` + finding **ids** + the path of the full temp report); `--all` prints the whole object, texts included |
+| `gate-journal-probe.mjs` | Electron | 7 | the gate's opt-in debug journal (`DSH_CODE_GATE_JOURNAL`) regressed: it must write every decision the gate made, nothing at all when the switch is off, and nothing that can break a turn when the trace path is unwritable. This is the reproducible stand-in for the one live-host run that used to be proved by temporary instrumentation |
+| `build-preset.mjs` `--check` | node | 1 | `cordis.patch.yml` drifted from the built-in `standard` preset: it must carry every standard entry plus only the intended additions. `--write` regenerates it, taking the `code-memory` rows from the current file |
+| `debt-audit.mjs` | node | 23 | a document asserts something the code no longer does: row counts in every document that quotes them, the nested-entry total, module lists (**wherever a row lives** — one row of this mode sits inside the built-in `compaction` group, and a check that only read the `code-memory` slice reported it as registered nowhere), settled questions, whether the budget report still agrees with itself *and is not older than the code it describes*, that every shipped text file is still strictly valid UTF-8 (a lossy re-encode turns an em dash into `?` or a character into U+FFFD, and node runs the file anyway), and — added 2026-10-02 — **that the pass counts quoted in TESTING.md, this README and HANDOVER.md still equal what the plain-node probes report when this audit runs them** |
+| `aegis-activation-probe.mjs` | Electron | 5 | Aegis activation drifted away from the `explicit` mode this deployment chose, or its skill catalog stopped being installed |
+| `pit-liveness.mjs` | node | — | a **gate**, and the closure of two silent failures this design documented as accepted limits: a `trigger:` that does not compile, or whose own `triggerSample` matches nothing, means the pit never fires and nothing says so; a `files:` path that names no file means the pit never arrives while you edit the thing it is about. It fails (exit 1) only on the first kind — a stale path is reported as WARN, because "this entry is old" is not "this entry is broken" — and it counts a machine-wide pit's *relative* path separately, since that path belongs to whichever repository the pit was written in and can never resolve here. It also reports how many triggers a recorded command has actually matched (`--json` for the raw shape). Deliberately **not** part of `debt-audit.mjs`: that audit checks the shipped package and must stay green on any machine, while this reads the local ledgers, where entries legitimately age. Measured 2026-10-03 on this host: 107 entries, 33 triggers, 0 broken, 2 stale project pointers, 9 cross-project |
+| `brief-shape.mjs` | node | — | a report: what the brief actually spends, section by section, on the **real** ledgers — full entries, index lines, the discovery line, and whether the hard bound held. Written 2026-10-03 after the first live run showed the bound holding while the discovery line was clipped away: "bounded" is not the same as "readable", and only this probe separates them. `--chars N` and `--topic TEXT` drive the same two knobs a caller has |
+| `index-diag.mjs` | node | — | a report, kept because it answered a question two other probes got wrong: how many index lines the brief emits at 4000 / 6000 / 8900 / 12000 characters, and what the mistakes section actually contains. The earlier `brief-shape.mjs` split sections on `\n\n## `, which also splits *inside* an entry, so it reported "0 index lines" while the index was there |
+| `ledger-census.mjs` | node | — | a report: entry counts, characters, mean entry size, `trigger:`/`files:` coverage and the one-line-index cost for both ledgers. Sizes the design instead of guessing at it (measured 2026-10-03: 30 project entries / 29,696 chars, 77 machine / 80,571 chars, index 78–94 chars per entry) |
+| `gate-chance.mjs` | node | — | a report, written 2026-10-03 to answer the one question the stubs could not: **has the compaction gate ever had a chance to fire?** It reads every real session log, takes the `contextWindow` the host itself recorded in each `request/context` frame, and reports peak occupancy per session, the distribution of those peaks, how many crossed the warn/ask lines *after* the gate was mounted, and whether the gate left any trace. It writes nothing, so it runs in a confined channel. Its first run is why the gate's line moved to 0.75: all 90 logs resolved 1,000,000 tokens, 28 sessions peaked in the 75-80% band, the biggest prompt ever recorded was 798,563 (79.86%), and the gate had never been asked |
+| `session-evidence.mjs` | node | — | a report, and the tool that made the measurement above possible: decodes a session log (concatenated zstd frames) and counts frame types, token usage, resolved windows, `compaction/*` frames, and gate traces. `--dump <type>` prints raw frames, which is how the real `request/context` shape (`{provider, model, contextWindow}`) and `request/header` shape (`{header:{config:…}}`) were read instead of assumed. Two traps are recorded in its header: a probe that matches the whole line will count *source text about the gate* as the gate firing (28 such false traces in one session), and a log line is not a frame — parse, then match |
+| `check-prompt-section.mjs` | node | 1 | the `code-ledger` prompt section (including "Working habits") is missing from the **system prompt the model was actually sent** — read from `system/message` frames only, because the same text also appears in the model's own replies, in tool-call arguments and in the re-injected system reminder, and matching those would pass on an echo. Reports the carrier count and says so when there is no such frame at all |
+| `check-yaml.mjs` | node | — | prints the preset row, its child rows and any `!!js` conditions, for eyeballing |
+| `truncate-surrogate-probe.mjs` | node | 4 | truncation stopped cutting characters in half. `truncate` and the head-clip slice on raw UTF-16 indices, so a limit landing between the two halves of an astral character (emoji, CJK extension-B) left a **lone surrogate** — a broken character that then travels into the ledger, the briefing and the session log, where it is quoted back and renders as a replacement box. Measured before the fix: `truncate('😀'.repeat(50), 10)` returned one and a half characters. `T1` pins that case, `T2` walks **120 limits** (1..40) across three scripts looking for any unpaired surrogate, `T3` covers the entry-shaping path, and `T4` records that `truncate` is not a hard cap — the `… (N chars omitted) …` marker pushes the result past `limit`, which the first version of that check got wrong and failed against correct code |
+| `real-output-schema-probe.mjs` | Electron | 2 | the harness's **own** result pipeline accepts what `code_record` returns — `snapshotJsonValue` followed by `validateJsonSchemaValue`, imported from the asar rather than re-implemented. This is the half `output-schema-probe.mjs` cannot reach, and the difference is load-bearing: an `undefined` leaf fails the snapshot (`value is not lossless JSON`) while an undeclared string key fails validation, so both pre-fix shapes were refused *after* the ledger write. `control:validator-has-teeth` runs first and requires the same pipeline to REJECT those two shapes — without it, "all cases pass" would also be true of a validator that accepts anything |
+| `output-schema-probe.mjs` | node | 12 | a tool's result is rejected by the harness when it carries a key its `output.schema` does not declare — and the rejection happens **after** the side effect, so the write lands while the model is told the call failed. Not hypothetical: every `code_record(kind="mistake"/"decision")` call did exactly this, and retrying is what turned one pit into `recurred: 2`. Drives all five `code_record` branches plus `code_brief`/`code_verify` through stubbed host imports, asserting no JSON-visible key is undeclared. **Partial by construction, and the limit is stated in its own comment**: its resolve hook rewrites every `@deepseek-ai/*` specifier to a stub, so it cannot run the harness's validator, and `notice: undefined` looks harmless to it — the shape that kept `code_record(kind="project"/"progress")` failing after the first fix. The `real-validator` check therefore defers to `real-output-schema-probe.mjs` and reports `unavailable` rather than a pass when the installation is unreachable. It also pins the rule a later attempt broke: every declared property must be `required: true`, because `required: false` does not make a property optional here — it makes the schema refuse to compile and the whole plugin row never mounts |
+| `audit-verify-probe.mjs` | node | 7 | the findings of the 2026-10-04 line-by-line audit of `lib/ledger.js`, each driven against the real library so a finding is a measurement rather than a claim. **Green because fixed**: a malformed `tasks.json` is moved aside with its bytes kept and the caller told (it used to be overwritten by defaults — one stray comma erased the board), and the machine section keeps its heading and pits at a budget too small for the facts. **Green as *refutations*** — the audit's prediction did not reproduce, and the check names say so, so a later reader cannot mistake them for passing tests of a defect: `shapeEntries` respects its limit *or* returns one whole entry (its documented floor, not a bug); a done task is found by title and by id; and the merge-path race needs two processes, which one process cannot exercise |
+| `pit-fire-probe.mjs` | node | 2 | drives the real `tools/pre-execute` handler of `lib/pit-guard.js` with stubbed host imports and asks the two questions the ledger's own statistics could not answer: does the `files:` side write the `file_hit` event it documents, and does editing a `lib/*.js` of this package record `restart_pending`? The second was **red on arrival** — `target` is normalised (lowercased, `/`) while the root and `path.sep` are not, so the comparison could never be true on Windows, and the whole journal (live file plus rotated segment) held **zero** `restart_pending` events. The feature had never once fired. Fixed 2026-10-04; this probe is why anyone knows |
+| `filehit-probe.mjs` | node | 2 | the negative result that closed a suspicion: the project journal holds 16 `trigger_hit` events and **no** `file_hit`, which looked like a broken statistic. It is not — the matcher is sound and the writer works; no session had simply edited a file that a pit names. Kept for the same reason as the check above: the next reader will have the same suspicion |
+| `context-cost.mjs` | node | — | prints where the newest session's prompt tokens went: uncached / cache-read / output totals, the uncached share per request, and any **prefix re-send** (uncached share > 50% — a plugin or config edit landed in the system prompt, or a session was resumed by a fresh process). Also a **pre-flight**: whether the prompt text on disk still equals the last `system/message` sent, which is what predicts a re-send before it is paid. A report, not a gate: a restart legitimately causes exactly one. `--all` lists every request |
+
+Two of these are reports rather than judgements (`check-yaml.mjs`, `context-cost.mjs`): they always exit 0, because a state worth reading is not always a state worth failing on. Everything else exits non-zero on failure.
+
+## Support files
+
+- `paths.mjs` — resolves the package, the asar, the harness binary, the profile
+  and the session logs; also installs the host's profile-resolution bootstrap
+  (`installResolution()`), which every Electron-run probe needs before importing
+  `lib/*.js`.
+- `unzstd.cjs` — decodes `session.v4.jsonl.zstd` (used by `check-prompt-section.mjs`).
+- `standard.patch.yml` — the extracted built-in preset, refreshed by
+  `build-preset.mjs --write`.
+
+## Conventions worth keeping
+
+- **Scratch fixtures go to the system temp dir** (`fs.mkdtempSync(path.join(os.tmpdir(), …))`),
+  never into the package. Learned the hard way: `budget-probe.mjs` wrote its fixture
+  bytes into `probes/`, which fails with `EPERM` the moment the probe runs under the
+  file sandbox — the run died before a single check ran, so its "29/29" was a number
+  no channel here could reproduce (2026-10-02).
+- **A probe that writes a file must stay runnable in both channels.** One-off human
+  logs use `tempReport()`.
+- **Reports that must survive across runs live in `probes/` and are gitignored** —
+  `budget-probe.mjs` rewrites `budget-report.{json,md,log}` because `debt-audit.mjs`
+  compares them across runs. Such a probe must also *tolerate* a channel that cannot
+  write the package: the checks still run, the missing artifact is named on stderr,
+  and the exit code keeps reflecting the checks. `debt-audit` R3 then makes the
+  staleness loud instead of hiding it behind two artifacts that agree with each other.
+- **The machine-wide ledger is redirected, never touched.** A probe exercising
+  `scope="global"` sets `DSH_CODE_GLOBAL_DIR` to its own temp dir: a confined channel
+  cannot write `~/.dsh-code/`, and a probe must never write the developer's real one.
+- **Redirect it before the first read, not inside the block that tests it.** Measured
+  2026-10-02: `guard-probe.mjs` installed the redirect inside its machine block, so the
+  pre-existing A/D/E checks read the developer's real `~/.dsh-code/` — and the moment
+  that directory gained its first pit, `D1` and `E` went red for a reason that had
+  nothing to do with the code. A check is only a check if it is hermetic against the
+  machine it happens to run on.
+- **Every bug this mode has had becomes a check here**, so a regression is loud
+  instead of rediscovered by hand.
+- **Never write a probe's check count by hand.** `debt-audit.mjs` (R5–R10) runs the
+  plain-node probes and fails when TESTING.md, this file or HANDOVER.md quotes a
+  number they no longer report. If a count moves, let the audit tell you which
+  line to fix instead of hunting for it; the Electron probes are still on the
+  freshness rule (R3/R4) because the audit must stay runnable without Electron.
+- **A check that cannot run says so; it is never a pass and never a failure.**
+  `guard-probe`'s H1/H2 need to spawn a child with a pipe, which some channels
+  refuse (`EPERM: spawn`); they come back as `skipped`, named on stderr and in the
+  report, and the documented `N/M` counts them as passing because the documented
+  invocation is the channel where they do run. Anything else would either claim a
+  race was tested when it was not, or paint a green probe red for an environment
+  it does not control.

@@ -1,0 +1,54 @@
+{
+  "store": "C:\\Users\\dhhxfggg\\.dsh\\sessions",
+  "logs": 110,
+  "scanned": 110,
+  "logsCarryingAMessageSource": 98,
+  "newest": [
+    "--E-projects-dsh-code-mode--\\a241996a-dd62-4c4b-9e71-77d2e7fe4e20\\session.v4.jsonl.zstd",
+    "--E-projects-dsh-code-mode--\\e44d7908-4626-4187-964b-68c527fe1ce3\\session.v4.jsonl.zstd",
+    "--E-projects-dsh-code-mode--\\session-481fe670-e7c6-4946-ae82-8d4a5f9a5ee1\\session.v4.jsonl.zstd"
+  ],
+  "kinds": {
+    "code-compact-gate": {
+      "messages": 0,
+      "logs": 0,
+      "forms": [],
+      "logNames": [],
+      "samples": []
+    },
+    "code-pit-guard": {
+      "messages": 1398,
+      "logs": 24,
+      "forms": [
+        "notice"
+      ],
+      "logNames": [
+        "--E-projects-dsh-code-mode--\\a241996a-dd62-4c4b-9e71-77d2e7fe4e20\\session.v4.jsonl.zstd",
+        "--E-projects-dsh-code-mode--\\e44d7908-4626-4187-964b-68c527fe1ce3\\session.v4.jsonl.zstd",
+        "--E-projects-dsh-code-mode--\\session-481fe670-e7c6-4946-ae82-8d4a5f9a5ee1\\session.v4.jsonl.zstd",
+        "--E-projects-dsh-code-mode--\\session-d148bc70-ca55-452e-8948-dec4c639048d\\session.v4.jsonl.zstd"
+      ],
+      "samples": [
+        "s not the same case — silently walking into a recorded pit is the one thing this ledger exists to prevent.\"}],\"source\":{\"kind\":\"code-pit-guard\",\"form\":\"notice\",\"summary\":\"a known mistake touches this action\"},\"role\":\"user\",\"id\":\"40587bfc-1b87-4fcb-a8a8-6f23998657cb\"},\"surfaceOp\":\"append\"}",
+        "s not the same case — silently walking into a recorded pit is the one thing this ledger exists to prevent.\"}],\"source\":{\"kind\":\"code-pit-guard\",\"form\":\"notice\",\"summary\":\"a known mistake touches this action\"},\"role\":\"user\",\"id\":\"99a914b5-73d1-4f13-8ff1-9f01359aa87a\"},\"surfaceOp\":\"append\"}"
+      ]
+    },
+    "code-gate": {
+      "messages": 8,
+      "logs": 6,
+      "forms": [
+        "notice"
+      ],
+      "logNames": [
+        "--E-projects-dsh-code-mode--\\e44d7908-4626-4187-964b-68c527fe1ce3\\session.v4.jsonl.zstd",
+        "--E-projects-dsh-code-mode--\\session-d148bc70-ca55-452e-8948-dec4c639048d\\session.v4.jsonl.zstd",
+        "--E-projects-dsh-code-mode--\\session-42bd1ed7-07c5-4790-bd2d-b769d33a4c65\\session.v4.jsonl.zstd",
+        "--E-projects-nunif--\\8850a124-3dcb-4cf2-9500-5747db3036e3\\session.v4.jsonl.zstd"
+      ],
+      "samples": [
+        "ugh `code_verify` with the output that proves it. If it genuinely cannot be verified here, say so plainly.\"}],\"source\":{\"kind\":\"code-gate\",\"form\":\"notice\",\"summary\":\"1 edit(s), 20 command(s) with no recorded evidence\"},\"role\":\"user\",\"id\":\"936318d5-3970-42b6-9792-e39aa1e38feb\"},\"surfaceOp\":\"append\"}",
+        "ugh `code_verify` with the output that proves it. If it genuinely cannot be verified here, say so plainly.\"}],\"source\":{\"kind\":\"code-gate\",\"form\":\"notice\",\"summary\":\"11 edit(s), 23 command(s) with no recorded evidence\"},\"role\":\"user\",\"id\":\"9457eff0-9754-4494-aed3-8df41dc2cfc2\"},\"surfaceOp\":\"append\"}"
+      ]
+    }
+  }
+}

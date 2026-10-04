@@ -1,0 +1,98 @@
+[
+  {
+    "id": "E1",
+    "name": "INVERTED 2026-10-04: a passing proof at the project root DOES settle the debt on that project's lib/a.js (the structural rule decisions.md records; as written this check asserted the superseded \"must name the file\" rule and contradicted its own control E1b)",
+    "ok": true,
+    "evidence": {
+      "settled": true,
+      "target": "C:\\Users\\dhhxfggg\\AppData\\Local\\Temp\\dsh-audit-debt-bare-echo-zTnJ8r\\lib\\a.js",
+      "root": "C:\\Users\\dhhxfggg\\AppData\\Local\\Temp\\dsh-audit-debt-bare-echo-zTnJ8r",
+      "excerpt": "{\"text\":\"## Recent ledger entries\\n- 2026-10-04 13:53 project: \\n- 2026-10-04 13:53 init: \\n- 2026-10-04 13:53 unverified: 1 edit(s), ran nothing\\n- 2026-10-04 13:53 verified: echo hi\",\"empty\":false,\"omitted\":[],\"emptySections\":[]}"
+    }
+  },
+  {
+    "id": "E1b",
+    "name": "CONTROL: a real project test (`pnpm test`) at the root settles the debt (documented intent)",
+    "ok": true,
+    "evidence": {
+      "settled": true,
+      "excerpt": "{\"text\":\"## Recent ledger entries\\n- 2026-10-04 13:53 project: \\n- 2026-10-04 13:53 init: \\n- 2026-10-04 13:53 unverified: 1 edit(s), ran nothing\\n- 2026-10-04 13:53 verified: pnpm test\",\"empty\":false,\"omitted\":[],\"emptySections\":[]}"
+    }
+  },
+  {
+    "id": "E2",
+    "name": "a proof naming a different path elsewhere leaves the debt visible (and names it)",
+    "ok": true,
+    "evidence": {
+      "visible": true,
+      "named": true,
+      "excerpt": "{\"text\":\"## Recent ledger entries\\n- 2026-10-04 13:53 project: \\n- 2026-10-04 13:53 init: \\n- 2026-10-04 13:53 unverified: 1 edit(s), ran nothing\\n- 2026-10-04 13:53 verified: node unrelated/file.js\\n\\n## Turns that changed code and ran nothing\\nEarlier sessions edited them and never proved anything; a line marked \\\"no recorded evidence\\\" also ran commands, but nothing wrote down what they printed:\\n… 1 earlier unproven turn(s) are still in journal.jsonl: a verification was recorded after them, but it neither ran in their project subtree nor named their files, so it did not exercise them (latest: 2026-10-04 13:53 `node unrelated/file.js`). Run the command that proves those files and record i",
+      "outside": "C:\\Users\\dhhxfggg\\AppData\\Local\\Temp\\dsh-audit-debt-elsewhere-ywAj8W\\lib\\target.js"
+    }
+  },
+  {
+    "id": "E3",
+    "name": "a proof that did not cover the debt is named in the brief rather than dropped",
+    "ok": true,
+    "evidence": {
+      "visible": true,
+      "named": true,
+      "excerpt": "{\"text\":\"## Recent ledger entries\\n- 2026-10-04 13:53 project: \\n- 2026-10-04 13:53 init: \\n- 2026-10-04 13:53 unverified: 1 edit(s), ran nothing\\n- 2026-10-04 13:53 verified: echo done\\n\\n## Turns that changed code and ran nothing\\nEarlier sessions edited them and never proved anything; a line marked \\\"no recorded evidence\\\" also ran commands, but nothing wrote down what they printed:\\n… 1 earlier unproven turn(s) are still in journal.jsonl: a verification was recorded after them, but it neither ran in their project subtree nor named their files, so it did not exercise them (latest: 2026-10-04 13:53 `echo done`). Run the command that proves those files and record it with code_verify, or say"
+    }
+  },
+  {
+    "id": "E4",
+    "name": "CONTROL: a proof naming the file settles it",
+    "ok": true,
+    "evidence": {
+      "excerpt": "{\"text\":\"## Recent ledger entries\\n- 2026-10-04 13:53 project: \\n- 2026-10-04 13:53 init: \\n- 2026-10-04 13:53 unverified: 1 edit(s), ran nothing\\n- 2026-10-04 13:53 verified: node lib/target.js\",\"empty\":false,\"omitted\":[],\"emptySections\":[]}"
+    }
+  },
+  {
+    "id": "E5",
+    "name": "a project-root proof does not settle an edit made OUTSIDE that project (no false coverage across trees)",
+    "ok": true,
+    "evidence": {
+      "visible": true,
+      "excerpt": "{\"text\":\"## Recent ledger entries\\n- 2026-10-04 13:53 project: \\n- 2026-10-04 13:53 init: \\n- 2026-10-04 13:53 unverified: 1 edit(s), ran nothing\\n- 2026-10-04 13:53 verified: npm test\\n\\n## Turns that changed code and ran nothing\\nEarlier sessions edited them and never proved anything; a line marked \\\"no recorded evidence\\\" also ran commands, but nothing wrote down what they printed:\\n… 1 earlier unproven turn(s) are still in journal.jsonl: a verification was recorded after them, but it neither ran in their project subtree nor named their files, so it did not exercise them (latest: 2026-10-04",
+      "outside": "C:\\Users\\dhhxfggg\\AppData\\Local\\Temp\\dsh-audit-debt-elsewhere4-YZdZIY\\lib\\target.js"
+    }
+  },
+  {
+    "id": "E6",
+    "name": "a FAILING verification leaves the debt visible",
+    "ok": true,
+    "evidence": {
+      "excerpt": "{\"text\":\"## Recent ledger entries\\n- 2026-10-04 13:53 project: \\n- 2026-10-04 13:53 init: \\n- 2026-10-04 13:53 unverified: 1 edit(s), ran nothing\\n- 2026-10-04 13:53 verified: node lib/a.js\\n\\n## Turns that changed code and ran nothing\\nEarlier sessions edited them and never proved anything; a line marked \\\"no recorded evidence\\\" also ran commands, but nothing wrote down what they printed:\\n- 2026"
+    }
+  },
+  {
+    "id": "E7",
+    "name": "a claimed (not independently verified) proof leaves the debt visible",
+    "ok": true,
+    "evidence": {
+      "excerpt": "{\"text\":\"## Recent ledger entries\\n- 2026-10-04 13:53 project: \\n- 2026-10-04 13:53 init: \\n- 2026-10-04 13:53 unverified: 1 edit(s), ran nothing\\n- 2026-10-04 13:53 verified: node lib/a.js\\n\\n## Turns that changed code and ran nothing\\nEarlier sessions edited them and never proved anything; a line marked \\\"no recorded evidence\\\" also ran commands, but nothing wrote down what they printed:\\n- 2026"
+    }
+  },
+  {
+    "id": "E8",
+    "name": "a proof inside the project does NOT settle a debt whose RELATIVE target resolves outside it (`../other/a.js` against the debt's own cwd)",
+    "ok": true,
+    "evidence": {
+      "visible": true,
+      "root": "C:\\Users\\dhhxfggg\\AppData\\Local\\Temp\\dsh-audit-debt-relative-up-8Ugi07",
+      "excerpt": "{\"text\":\"## Recent ledger entries\\n- 2026-10-04 13:53 project: \\n- 2026-10-04 13:53 init: \\n- 2026-10-04 13:53 unverified: 1 edit(s), ran nothing\\n- 2026-10-04 13:53 verified: pnpm test\\n\\n## Turns that changed code and ran nothing\\nEarlier sessions edited them and never proved anything; a line marked \\\"no recorded evidence\\\" also ran commands, but nothing wrote down what they printed:\\n… 1 earlier unproven turn(s) are still in journal.jsonl: a verification was recorded after them, but it neither ran in their project subtree nor named their files, so it did not exercise them (latest: 2026-10-0"
+    }
+  },
+  {
+    "id": "E9",
+    "name": "a proof recorded in ANOTHER project does not settle a debt whose target is relative to this one",
+    "ok": true,
+    "evidence": {
+      "visible": true,
+      "root": "C:\\Users\\dhhxfggg\\AppData\\Local\\Temp\\dsh-audit-debt-relative-leak-VzxYz6",
+      "other": "C:\\Users\\dhhxfggg\\AppData\\Local\\Temp\\dsh-audit-debt-relative-leak-other-9Pngdg",
+      "excerpt": "{\"text\":\"## Recent ledger entries\\n- 2026-10-01 00:00 unverified: 1 edit(s), ran nothing\\n- 2026-10-01 00:10 verified: pnpm test\\n\\n## Turns that changed code and ran nothing\\nEarlier sessions edited them and never proved anything; a line marked \\\"no recorded evidence\\\" also ran commands, but nothing wrote down what they printed:\\n… 1 earlier unproven turn(s) are still in journal.jsonl: a verification was recorded after them, but it neither ran in their project subtree nor named their files, so it did not exercise them (latest: 2026-10-01 00:10 `pnpm test`). Run the command that proves those f"
+    }
+  }
+]

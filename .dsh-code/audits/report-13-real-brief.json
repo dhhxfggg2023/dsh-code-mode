@@ -1,0 +1,30 @@
+{
+  "chars": 3281,
+  "omitted": [],
+  "sections": [
+    "## Project",
+    "## Machine-wide facts (true of this host, every project)",
+    "## 2026-10-04 · set-content--encoding-utf8nobom-failed-cannot-convert-value-",
+    "## Task board",
+    "## Recent ledger entries",
+    "## Failing commands nobody wrote down",
+    "## Known mistakes",
+    "## 2026-10-04 · code_record-kind-mistake-and-code_record-kind-decision-alway",
+    "## Recent decisions",
+    "## 2026-10-04 · 未缓存输入增长与 Hindsight 插件无关（实测：103 个日志里只有本会话带其注入文本；峰值出自我改 prompt.js）；该插件当前因无 API token 而零价值"
+  ],
+  "verifiedCount": 427,
+  "unverifiedCount": 0,
+  "newestOk": {
+    "ts": "2026-10-04T13:13:55.040Z",
+    "session": "session-481fe670-e7c6-4946-ae82-8d4a5f9a5ee1",
+    "kind": "verified",
+    "cmd": "$node='E:\\tools\\DSH\\resources\\runtime\\primary-runtime\\dependencies\\node\\bin\\node.exe'; & $node 'E:\\projects\\dsh-code-mode\\probes\\mode-cost.mjs' 2>&1 | Select-String -Pattern 'mode markers|^  agent-|not serialisable|ledger-tool output|per call' | ForEach-Object { $_.Line.Trim() }; \"EXIT=[$LASTEXITCODE]\"",
+    "cwd": "E:\\projects\\dsh-code-mode",
+    "expect": "mode markers: 29 of 110",
+    "ok": true,
+    "tail": "mode markers: 29 of 110 log(s) carry a mode frame; first 3:\r\nledger-tool output across those 30 session(s): 803 call(s), median 8685 chars/session ≈ 2347 tok, mean 14569 chars ≈ 3938 tok\r\nper call: mean 544 chars ≈ 147 tokens\r\nEXIT=[0]\r\n"
+  },
+  "debts": [],
+  "secondReadChars": 3281
+}

@@ -1,0 +1,896 @@
+{
+  "probe": "10-tool-surface",
+  "results": [
+    {
+      "id": "record:project",
+      "claim": "code_record(project) produces a value the harness accepts",
+      "outcome": "FAIL",
+      "evidence": {
+        "keys": [
+          "kind",
+          "scope",
+          "file",
+          "summary",
+          "notice"
+        ],
+        "returned": {
+          "kind": "project",
+          "scope": "project",
+          "file": "C:\\Users\\dhhxfggg\\AppData\\Local\\Temp\\audit-record-cHnpFt\\.dsh-code\\project.json",
+          "summary": "project fields: commands, stack"
+        },
+        "stage": "snapshot",
+        "message": "tool \"code_record\" returned invalid output: value is not lossless JSON"
+      }
+    },
+    {
+      "id": "record:progress",
+      "claim": "code_record(progress) produces a value the harness accepts",
+      "outcome": "FAIL",
+      "evidence": {
+        "keys": [
+          "kind",
+          "scope",
+          "file",
+          "summary",
+          "notice"
+        ],
+        "returned": {
+          "kind": "progress",
+          "scope": "project",
+          "file": "C:\\Users\\dhhxfggg\\AppData\\Local\\Temp\\audit-record-cHnpFt\\.dsh-code\\tasks.json",
+          "summary": "2026-10-04-audit-probe-task [active] Audit probe task — note"
+        },
+        "stage": "snapshot",
+        "message": "tool \"code_record\" returned invalid output: value is not lossless JSON"
+      }
+    },
+    {
+      "id": "record:progress-existing",
+      "claim": "code_record(progress-existing) produces a value the harness accepts",
+      "outcome": "FAIL",
+      "evidence": {
+        "keys": [
+          "kind",
+          "scope",
+          "file",
+          "summary",
+          "notice"
+        ],
+        "returned": {
+          "kind": "progress",
+          "scope": "project",
+          "file": "C:\\Users\\dhhxfggg\\AppData\\Local\\Temp\\audit-record-cHnpFt\\.dsh-code\\tasks.json",
+          "summary": "2026-01-01-existing-task [active] Existing task — moved by probe"
+        },
+        "stage": "snapshot",
+        "message": "tool \"code_record\" returned invalid output: value is not lossless JSON"
+      }
+    },
+    {
+      "id": "record:decision",
+      "claim": "code_record(decision) produces a value the harness accepts",
+      "outcome": "PASS",
+      "evidence": {
+        "keys": [
+          "kind",
+          "scope",
+          "file",
+          "summary"
+        ],
+        "summary": "Probe decision",
+        "rendered": "Recorded decision (project) → C:\\Users\\dhhxfggg\\AppData\\Local\\Temp\\audit-record-cHnpFt\\.dsh-code\\decisions.md\nProbe deci"
+      }
+    },
+    {
+      "id": "record:mistake",
+      "claim": "code_record(mistake) produces a value the harness accepts",
+      "outcome": "PASS",
+      "evidence": {
+        "keys": [
+          "kind",
+          "scope",
+          "file",
+          "summary"
+        ],
+        "summary": "Probe pit symptom long enough to be a locator — No `files:` and no `trigger:`: nothing wil",
+        "rendered": "Recorded mistake (project) → C:\\Users\\dhhxfggg\\AppData\\Local\\Temp\\audit-record-cHnpFt\\.dsh-code\\mistakes.md\nProbe pit sy"
+      }
+    },
+    {
+      "id": "record:verified",
+      "claim": "code_record(verified) produces a value the harness accepts",
+      "outcome": "PASS",
+      "evidence": {
+        "keys": [
+          "kind",
+          "scope",
+          "file",
+          "summary"
+        ],
+        "summary": "claimed (never run here): node --version",
+        "rendered": "Recorded verified (project) → C:\\Users\\dhhxfggg\\AppData\\Local\\Temp\\audit-record-cHnpFt\\.dsh-code\\journal.jsonl\nclaimed ("
+      }
+    },
+    {
+      "id": "record:project-corrupt",
+      "claim": "code_record(project-corrupt) produces a value the harness accepts",
+      "outcome": "FAIL",
+      "evidence": {
+        "keys": [
+          "kind",
+          "scope",
+          "file",
+          "summary",
+          "notice"
+        ],
+        "noticeValue": "[!] project.json could not be parsed, so it was moved aside to C:\\Users\\dhhxfggg\\AppData\\Local\\Temp\\audit-corrupt-V89xgY\\.dsh-code\\project.json.corrupt-2026-10-04T13-11-35-542Z and a fresh file was written. The ledger is intact again, but the previous content is only in that file — read it before assuming those records are gone.",
+        "stage": "schema",
+        "message": "tool \"code_record\" returned invalid output: \"value.notice\" is not a declared property (additionalProperties: false)"
+      }
+    },
+    {
+      "id": "record:progress-corrupt",
+      "claim": "code_record(progress-corrupt) produces a value the harness accepts",
+      "outcome": "FAIL",
+      "evidence": {
+        "keys": [
+          "kind",
+          "scope",
+          "file",
+          "summary",
+          "notice"
+        ],
+        "noticeValue": "[!] tasks.json could not be parsed, so it was moved aside to C:\\Users\\dhhxfggg\\AppData\\Local\\Temp\\audit-corrupt-V89xgY\\.dsh-code\\tasks.json.corrupt-2026-10-04T13-11-35-548Z and a fresh file was written. The ledger is intact again, but the previous content is only in that file — read it before assuming those records are gone.",
+        "stage": "schema",
+        "message": "tool \"code_record\" returned invalid output: \"value.notice\" is not a declared property (additionalProperties: false)"
+      }
+    },
+    {
+      "id": "record:project-global",
+      "claim": "code_record(kind=project, scope=global) produces a value the harness accepts",
+      "outcome": "FAIL",
+      "evidence": {
+        "stage": "snapshot",
+        "message": "tool \"code_record\" returned invalid output: value is not lossless JSON"
+      }
+    },
+    {
+      "id": "args:kind-uppercase",
+      "claim": "kind-uppercase is refused with a message matching /invalid arguments/",
+      "outcome": "PASS",
+      "evidence": {
+        "message": "ToolArgsError: invalid arguments: \"kind\" must be one of [\"project\",\"progress\",\"decision\",\"mistake\",\"verified\"]"
+      }
+    },
+    {
+      "id": "args:kind-empty",
+      "claim": "kind-empty is refused with a message matching /invalid arguments/",
+      "outcome": "PASS",
+      "evidence": {
+        "message": "ToolArgsError: invalid arguments: \"kind\" must be one of [\"project\",\"progress\",\"decision\",\"mistake\",\"verified\"]"
+      }
+    },
+    {
+      "id": "args:kind-unknown",
+      "claim": "kind-unknown is refused with a message matching /invalid arguments/",
+      "outcome": "PASS",
+      "evidence": {
+        "message": "ToolArgsError: invalid arguments: \"kind\" must be one of [\"project\",\"progress\",\"decision\",\"mistake\",\"verified\"]"
+      }
+    },
+    {
+      "id": "args:scope-global-progress",
+      "claim": "scope-global-progress is refused with a message matching /task board is project-scoped/",
+      "outcome": "PASS",
+      "evidence": {
+        "message": "Error: code_record(kind=\"progress\", scope=\"global\"): the task board is project-scoped — record the work in the project ledger. Machine-wide facts use kind=\"project\"/\"decision\"/\"mistake\" with scope=\"global\"."
+      }
+    },
+    {
+      "id": "args:scope-uppercase",
+      "claim": "scope-uppercase is refused with a message matching /invalid arguments/",
+      "outcome": "PASS",
+      "evidence": {
+        "message": "ToolArgsError: invalid arguments: \"scope\" must be one of [\"project\",\"global\"]"
+      }
+    },
+    {
+      "id": "args:cmd-number",
+      "claim": "cmd-number is refused with a message matching /invalid arguments/",
+      "outcome": "PASS",
+      "evidence": {
+        "message": "ToolArgsError: invalid arguments: \"cmd\" must be a string"
+      }
+    },
+    {
+      "id": "args:status-unknown",
+      "claim": "status-unknown is refused with a message matching /invalid arguments/",
+      "outcome": "PASS",
+      "evidence": {
+        "message": "ToolArgsError: invalid arguments: \"status\" must be one of [\"active\",\"done\",\"blocked\"]"
+      }
+    },
+    {
+      "id": "args:patch-not-object",
+      "claim": "patch-not-object is refused with a message matching /invalid arguments/",
+      "outcome": "PASS",
+      "evidence": {
+        "message": "ToolArgsError: invalid arguments: \"patch\" must be an object"
+      }
+    },
+    {
+      "id": "args:trigger-invalid-regex",
+      "claim": "trigger-invalid-regex is refused with a message matching /never fire/",
+      "outcome": "PASS",
+      "evidence": {
+        "message": "Error: code_record: `trigger` is not a valid regular expression, so the pit would never fire and nothing would say so. Fix the pattern and write the entry again. Pattern: \"Set-Content|(Out-File\" — Invalid regular express"
+      }
+    },
+    {
+      "id": "args:trigger-sample-without-trigger",
+      "claim": "trigger-sample-without-trigger is refused with a message matching /needs `trigger`/",
+      "outcome": "PASS",
+      "evidence": {
+        "message": "Error: code_record: `triggerSample` needs `trigger` — there is no pattern to test it against"
+      }
+    },
+    {
+      "id": "args:mistake-no-locator",
+      "claim": "mistake-no-locator is refused with a message matching /no rule and no way to be found/",
+      "outcome": "PASS",
+      "evidence": {
+        "message": "Error: code_record: this mistake has no rule and no way to be found again — give `avoid` (the rule, \"do not X because Y\"), or `files`, or a `trigger` regex, or a longer `symptom`. A ledger entry nothing can retrieve is a"
+      }
+    },
+    {
+      "id": "args:task-unknown",
+      "claim": "task-unknown is refused with a message matching /no task on the board matches/",
+      "outcome": "PASS",
+      "evidence": {
+        "message": "Error: code_record(kind=progress): no task on the board matches \"no-such-task-id\". Pass either the full id or an exact title; the board is empty"
+      }
+    },
+    {
+      "id": "args:decision-without-body",
+      "claim": "decision-without-body is refused with a message matching /needs `title` and `body`/",
+      "outcome": "PASS",
+      "evidence": {
+        "message": "Error: code_record(kind=\"decision\") needs `title` and `body`"
+      }
+    },
+    {
+      "id": "args:verified-without-cmd",
+      "claim": "verified-without-cmd is refused with a message matching /needs `cmd`/",
+      "outcome": "PASS",
+      "evidence": {
+        "message": "Error: code_record(kind=\"verified\") needs `cmd`"
+      }
+    },
+    {
+      "id": "args:project-without-patch",
+      "claim": "project-without-patch is refused with a message matching /needs `patch`/",
+      "outcome": "PASS",
+      "evidence": {
+        "message": "Error: code_record(kind=\"project\") needs `patch`"
+      }
+    },
+    {
+      "id": "args:no-side-effect-on-refusal",
+      "claim": "a refused call leaves no ledger behind",
+      "outcome": "FAIL",
+      "evidence": {
+        "createdBy": [
+          {
+            "label": "trigger-invalid-regex",
+            "created": [
+              "decisions.md",
+              "journal.jsonl",
+              "mistakes.md",
+              "project.json",
+              "tasks.json"
+            ]
+          }
+        ],
+        "filesNow": [
+          "decisions.md",
+          "journal.jsonl",
+          "mistakes.md",
+          "project.json",
+          "tasks.json"
+        ]
+      }
+    },
+    {
+      "id": "args:refusal-changes-the-brief",
+      "claim": "a project whose only call was REFUSED still briefs as \"no ledger yet\"",
+      "outcome": "FAIL",
+      "evidence": {
+        "empty": false,
+        "firstLine": "## Machine-wide facts (true of this host, every project)",
+        "head": "## Machine-wide facts (true of this host, every project)\nLedger: C:\\Users\\dhhxfggg\\AppData\\Local\\Temp\\audit-global-Pqb8RP\nFacts:\n- hosts: probe\nPits that are true of this machine, by importance:\n\n\n## "
+      }
+    },
+    {
+      "id": "args:extra-unknown-field",
+      "claim": "extra-unknown-field: accepted (record what it did)",
+      "outcome": "PASS",
+      "evidence": {
+        "keys": [
+          "kind",
+          "scope",
+          "file",
+          "summary",
+          "notice"
+        ],
+        "summary": "project fields: stack",
+        "contract": "tool \"code_record\" returned invalid output: value is not lossless JSON"
+      }
+    },
+    {
+      "id": "args:files-backslash",
+      "claim": "files-backslash: accepted (record what it did)",
+      "outcome": "PASS",
+      "evidence": {
+        "keys": [
+          "kind",
+          "scope",
+          "file",
+          "summary"
+        ],
+        "summary": "A pit filed with backslash paths for the probe",
+        "contract": "accepted by the output contract"
+      }
+    },
+    {
+      "id": "args:files-trailing-separator",
+      "claim": "files-trailing-separator: accepted (record what it did)",
+      "outcome": "PASS",
+      "evidence": {
+        "keys": [
+          "kind",
+          "scope",
+          "file",
+          "summary"
+        ],
+        "summary": "A pit filed with a trailing separator for the probe",
+        "contract": "accepted by the output contract"
+      }
+    },
+    {
+      "id": "args:task-as-title",
+      "claim": "task-as-title: accepted (record what it did)",
+      "outcome": "PASS",
+      "evidence": {
+        "keys": [
+          "kind",
+          "scope",
+          "file",
+          "summary",
+          "notice"
+        ],
+        "summary": "2026-10-04-audit-probe-task [active] Audit probe task — by title",
+        "contract": "tool \"code_record\" returned invalid output: value is not lossless JSON"
+      }
+    },
+    {
+      "id": "args:task-as-slug",
+      "claim": "task-as-slug: accepted (record what it did)",
+      "outcome": "PASS",
+      "evidence": {
+        "keys": [
+          "kind",
+          "scope",
+          "file",
+          "summary",
+          "notice"
+        ],
+        "summary": "2026-10-04-audit-probe-task [active] Audit probe task — by slug",
+        "contract": "tool \"code_record\" returned invalid output: value is not lossless JSON"
+      }
+    },
+    {
+      "id": "args:status-done-without-verify",
+      "claim": "status-done-without-verify: accepted (record what it did)",
+      "outcome": "PASS",
+      "evidence": {
+        "keys": [
+          "kind",
+          "scope",
+          "file",
+          "summary",
+          "notice"
+        ],
+        "summary": "2026-10-04-audit-probe-task [done] Audit probe task — closing",
+        "contract": "tool \"code_record\" returned invalid output: value is not lossless JSON"
+      }
+    },
+    {
+      "id": "args:task-identity",
+      "claim": "title, slug and id resolve to one task instead of creating duplicates",
+      "outcome": "PASS",
+      "evidence": {
+        "active": [],
+        "done": [
+          "2026-10-04-audit-probe-task"
+        ]
+      }
+    },
+    {
+      "id": "args:global-progress-refused-clean",
+      "claim": "scope=global + kind=progress is refused and writes nothing to the machine ledger",
+      "outcome": "PASS",
+      "evidence": {
+        "threw": "Error: code_record(kind=\"progress\", scope=\"global\"): the task board is project-scoped — record the work in the project ledger. Machine-wide facts use kind=\"project\"/\"decision\"/\"mistake\" with scope=\"global\".",
+        "machineLedgerFiles": []
+      }
+    },
+    {
+      "id": "brief:empty-project",
+      "claim": "code_brief on a project with no ledger returns a valid value",
+      "outcome": "PASS",
+      "evidence": {
+        "keys": [
+          "projectRoot",
+          "ledgerDir",
+          "globalDir",
+          "brief",
+          "empty",
+          "omittedSections"
+        ],
+        "empty": true,
+        "omitted": [],
+        "contract": "ok"
+      }
+    },
+    {
+      "id": "brief:populated",
+      "claim": "code_brief(populated) returns a value the harness accepts and renders",
+      "outcome": "PASS",
+      "evidence": {
+        "chars": 1437,
+        "omitted": [],
+        "empty": false,
+        "contract": {
+          "renderChars": 1512
+        }
+      }
+    },
+    {
+      "id": "brief:topic",
+      "claim": "code_brief(topic) returns a value the harness accepts and renders",
+      "outcome": "PASS",
+      "evidence": {
+        "chars": 1440,
+        "omitted": [],
+        "empty": false,
+        "contract": {
+          "renderChars": 1515
+        }
+      }
+    },
+    {
+      "id": "brief:full",
+      "claim": "code_brief(full) returns a value the harness accepts and renders",
+      "outcome": "PASS",
+      "evidence": {
+        "chars": 2137,
+        "omitted": [],
+        "empty": false,
+        "contract": {
+          "renderChars": 2212
+        }
+      }
+    },
+    {
+      "id": "brief:topic-and-full",
+      "claim": "code_brief(topic-and-full) returns a value the harness accepts and renders",
+      "outcome": "PASS",
+      "evidence": {
+        "chars": 2137,
+        "omitted": [],
+        "empty": false,
+        "contract": {
+          "renderChars": 2212
+        }
+      }
+    },
+    {
+      "id": "brief:huge-ledger",
+      "claim": "code_brief(huge-ledger) returns a value the harness accepts and renders",
+      "outcome": "PASS",
+      "evidence": {
+        "chars": 1537,
+        "omitted": [],
+        "empty": false,
+        "contract": {
+          "renderChars": 1612
+        }
+      }
+    },
+    {
+      "id": "brief:budget",
+      "claim": "the default brief stays inside the declared 4000-character budget",
+      "outcome": "PASS",
+      "evidence": {
+        "chars": 1537
+      }
+    },
+    {
+      "id": "brief:full-is-unbounded",
+      "claim": "code_brief(full) reports how much it returned (no budget claim)",
+      "outcome": "PASS",
+      "evidence": {
+        "chars": 2237,
+        "omitted": []
+      }
+    },
+    {
+      "id": "brief:maxchars-argument",
+      "claim": "passing the maxChars the prompt tells the model to raise actually raises the budget (or is refused)",
+      "outcome": "FAIL",
+      "evidence": {
+        "chars": 1594,
+        "parameterNames": [
+          "topic",
+          "full"
+        ],
+        "acceptedSilently": true
+      }
+    },
+    {
+      "id": "brief:topic-heading-fragment",
+      "claim": "topic=\"pit-number-7\" finds the entry (or reports that it found none)",
+      "outcome": "PASS",
+      "evidence": {
+        "chars": 1597,
+        "mentionsQuery": true,
+        "hasMistakesSection": true
+      }
+    },
+    {
+      "id": "brief:topic-trigger-literal",
+      "claim": "topic=\"Set-Content\" finds the entry (or reports that it found none)",
+      "outcome": "PASS",
+      "evidence": {
+        "chars": 779,
+        "mentionsQuery": true,
+        "hasMistakesSection": true
+      }
+    },
+    {
+      "id": "brief:topic-trigger-prefixed",
+      "claim": "topic=\"trigger:Set-Content\" finds the entry (or reports that it found none)",
+      "outcome": "NOTE",
+      "evidence": {
+        "chars": 518,
+        "mentionsQuery": false,
+        "hasMistakesSection": false
+      }
+    },
+    {
+      "id": "brief:topic-file",
+      "claim": "topic=\"lib/ledger.js\" finds the entry (or reports that it found none)",
+      "outcome": "PASS",
+      "evidence": {
+        "chars": 568,
+        "hasMistakesSection": false,
+        "excerpt": "is session): \n- 2026-10-04 13:11 session_start (this session): \n\nThis brief is a selection, not the ledger: 2 mistake entries and 0 decisions in this project. Name a file, a symptom, a heading or a `trigger:` in code_brief({topic}) to read any of them in full."
+      }
+    },
+    {
+      "id": "verify:pass-no-expect",
+      "claim": "code_verify records ok=true for the pass-no-expect shell result",
+      "outcome": "PASS",
+      "evidence": {
+        "exitCode": 0,
+        "matched": true,
+        "ok": true,
+        "tail": "all good",
+        "contract": "accepted"
+      }
+    },
+    {
+      "id": "verify:mismatch",
+      "claim": "code_verify records ok=false for the mismatch shell result",
+      "outcome": "PASS",
+      "evidence": {
+        "exitCode": 0,
+        "matched": false,
+        "ok": false,
+        "tail": "all good",
+        "contract": "accepted"
+      }
+    },
+    {
+      "id": "verify:nonzero",
+      "claim": "code_verify records ok=false for the nonzero shell result",
+      "outcome": "PASS",
+      "evidence": {
+        "exitCode": 3,
+        "matched": true,
+        "ok": false,
+        "tail": "x\nboom",
+        "contract": "accepted"
+      }
+    },
+    {
+      "id": "verify:denied",
+      "claim": "code_verify records ok=false for the denied shell result",
+      "outcome": "PASS",
+      "evidence": {
+        "exitCode": 0,
+        "matched": true,
+        "ok": false,
+        "tail": "x\n[sandbox denied this command under the session's current file policy]",
+        "contract": "accepted"
+      }
+    },
+    {
+      "id": "verify:runnerFailed",
+      "claim": "code_verify records ok=false for the runnerFailed shell result",
+      "outcome": "PASS",
+      "evidence": {
+        "exitCode": 0,
+        "matched": true,
+        "ok": false,
+        "tail": "x\n[the sandbox runner failed, so this run proves nothing]",
+        "contract": "accepted"
+      }
+    },
+    {
+      "id": "verify:timedOut",
+      "claim": "code_verify records ok=false for the timedOut shell result",
+      "outcome": "PASS",
+      "evidence": {
+        "exitCode": 0,
+        "matched": true,
+        "ok": false,
+        "tail": "x",
+        "contract": "accepted"
+      }
+    },
+    {
+      "id": "verify:aborted",
+      "claim": "code_verify records ok=false for the aborted shell result",
+      "outcome": "PASS",
+      "evidence": {
+        "exitCode": 0,
+        "matched": true,
+        "ok": false,
+        "tail": "x",
+        "contract": "accepted"
+      }
+    },
+    {
+      "id": "verify:no-exit-code",
+      "claim": "code_verify records ok=false for the no-exit-code shell result",
+      "outcome": "PASS",
+      "evidence": {
+        "exitCode": -1,
+        "matched": true,
+        "ok": false,
+        "tail": "x",
+        "contract": "accepted"
+      }
+    },
+    {
+      "id": "verify:stdout-missing",
+      "claim": "code_verify records ok=true for the stdout-missing shell result",
+      "outcome": "PASS",
+      "evidence": {
+        "exitCode": 0,
+        "matched": true,
+        "ok": true,
+        "tail": "",
+        "contract": "accepted"
+      }
+    },
+    {
+      "id": "verify:killed-as-one",
+      "claim": "code_verify records ok=false for the killed-as-one shell result",
+      "outcome": "PASS",
+      "evidence": {
+        "exitCode": 1,
+        "matched": true,
+        "ok": false,
+        "tail": "x",
+        "contract": "accepted"
+      }
+    },
+    {
+      "id": "verify:missing-shell",
+      "claim": "code_verify refuses loudly when the host shell service is absent",
+      "outcome": "PASS",
+      "evidence": {
+        "threw": "Error: code_verify: the host shell service is unavailable in this mode, so no command can be run to verify a claim"
+      }
+    },
+    {
+      "id": "verify:shell-throws",
+      "claim": "code_verify surfaces a shell that cannot spawn (nothing is recorded as a pass)",
+      "outcome": "PASS",
+      "evidence": {
+        "threw": "Error: spawn EPERM"
+      }
+    },
+    {
+      "id": "verify:output-shape",
+      "claim": "code_verify notices when the shell reports output in an unexpected field",
+      "outcome": "NOTE",
+      "evidence": {
+        "value": {
+          "matched": false,
+          "ok": false,
+          "tail": ""
+        }
+      }
+    },
+    {
+      "id": "prompt:registered",
+      "claim": "prompt.js registers its section and no tools",
+      "outcome": "PASS",
+      "evidence": {
+        "sectionName": "code-ledger",
+        "order": -50,
+        "chars": 4460,
+        "tools": []
+      }
+    },
+    {
+      "id": "prompt:file:project.json",
+      "claim": "prompt claim file:project.json matches the code",
+      "outcome": "PASS",
+      "evidence": {
+        "ok": true
+      }
+    },
+    {
+      "id": "prompt:file:tasks.json",
+      "claim": "prompt claim file:tasks.json matches the code",
+      "outcome": "PASS",
+      "evidence": {
+        "ok": true
+      }
+    },
+    {
+      "id": "prompt:file:decisions.md",
+      "claim": "prompt claim file:decisions.md matches the code",
+      "outcome": "PASS",
+      "evidence": {
+        "ok": true
+      }
+    },
+    {
+      "id": "prompt:file:mistakes.md",
+      "claim": "prompt claim file:mistakes.md matches the code",
+      "outcome": "PASS",
+      "evidence": {
+        "ok": true
+      }
+    },
+    {
+      "id": "prompt:file:journal.jsonl",
+      "claim": "prompt claim file:journal.jsonl matches the code",
+      "outcome": "PASS",
+      "evidence": {
+        "ok": true
+      }
+    },
+    {
+      "id": "prompt:dir:.dsh-code",
+      "claim": "prompt claim dir:.dsh-code matches the code",
+      "outcome": "PASS",
+      "evidence": {
+        "ok": true
+      }
+    },
+    {
+      "id": "prompt:machine-dir",
+      "claim": "prompt claim machine-dir matches the code",
+      "outcome": "PASS",
+      "evidence": {
+        "ok": true
+      }
+    },
+    {
+      "id": "prompt:budget:fixed-not-fractional",
+      "claim": "prompt claim budget:fixed-not-fractional matches the code",
+      "outcome": "PASS",
+      "evidence": {
+        "ok": true
+      }
+    },
+    {
+      "id": "prompt:budget:maxchars-is-a-config",
+      "claim": "prompt claim budget:maxchars-is-a-config matches the code",
+      "outcome": "PASS",
+      "evidence": {
+        "ok": true
+      }
+    },
+    {
+      "id": "prompt:tool:code_brief",
+      "claim": "prompt claim tool:code_brief matches the code",
+      "outcome": "PASS",
+      "evidence": {
+        "ok": true
+      }
+    },
+    {
+      "id": "prompt:tool:code_record",
+      "claim": "prompt claim tool:code_record matches the code",
+      "outcome": "PASS",
+      "evidence": {
+        "ok": true
+      }
+    },
+    {
+      "id": "prompt:tool:code_verify",
+      "claim": "prompt claim tool:code_verify matches the code",
+      "outcome": "PASS",
+      "evidence": {
+        "ok": true
+      }
+    },
+    {
+      "id": "prompt:kinds:four-named",
+      "claim": "prompt claim kinds:four-named matches the code",
+      "outcome": "PASS",
+      "evidence": {
+        "ok": true
+      }
+    },
+    {
+      "id": "prompt:kinds:verified-also-exists",
+      "claim": "prompt claim kinds:verified-also-exists matches the code",
+      "outcome": "FAIL",
+      "evidence": {
+        "ok": false
+      }
+    },
+    {
+      "id": "prompt:habits:six",
+      "claim": "prompt claim habits:six matches the code",
+      "outcome": "PASS",
+      "evidence": {
+        "ok": true
+      }
+    },
+    {
+      "id": "prompt:close:ledger-count-line",
+      "claim": "prompt claim close:ledger-count-line matches the code",
+      "outcome": "PASS",
+      "evidence": {
+        "ok": true
+      }
+    },
+    {
+      "id": "prompt:close:topic-or-maxchars",
+      "claim": "prompt claim close:topic-or-maxchars matches the code",
+      "outcome": "PASS",
+      "evidence": {
+        "ok": true
+      }
+    },
+    {
+      "id": "prompt:tool-names-exist",
+      "claim": "every code_* tool the prompt names is registered by this package",
+      "outcome": "PASS",
+      "evidence": {
+        "named": [
+          "code_brief",
+          "code_record",
+          "code_verify"
+        ],
+        "registered": [
+          "code_brief",
+          "code_record",
+          "code_verify"
+        ],
+        "missing": []
+      }
+    }
+  ],
+  "globalDir": "C:\\Users\\dhhxfggg\\AppData\\Local\\Temp\\audit-global-Pqb8RP"
+}

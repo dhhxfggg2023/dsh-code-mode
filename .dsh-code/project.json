@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "createdAt": "2026-10-02T04:20:46.605Z",
+  "updatedAt": "2026-10-04T12:36:49.882Z",
+  "commands": {
+    "probe:brief": "node probes/brief-shape.mjs",
+    "probe:census": "node probes/ledger-census.mjs",
+    "probe:chance": "node probes/gate-chance.mjs",
+    "probe:sessions": "node probes/session-evidence.mjs"
+  },
+  "stack": "DSH agent preset 插件包（纯 ESM JS，Node 侧；无 TS、无构建步骤）。module 名为 dsh-code-mode，通过 profile manifest 的 link: 安装进 desktop profile。改 lib/*.js 或 cordis.patch.yml 后必须重启 DSH 才生效（子插件模块只在挂载时 import 一次）。",
+  "layout": "lib/{prompt,tool-brief,tool-record,tool-verify,gate-verify,budget,pit-guard,ledger}.js；cordis.patch.yml = preset 声明（code-memory 组 7 行（code-prompt/brief/record/verify/gate/budget/pit-guard）（code-prompt/brief/record/verify/gate/budget/pit-guard））；probes/ = 判据集（Electron 通道与 node 通道见 probes/README.md）。E:\\tools\\DSH 是 Electron 安装目录，不是源码。",
+  "notes": "【取证的可行边界（2026-10-03 实测，别重复试）】想读宿主包（如 @deepseek-ai/dsh-compaction-basic）的源码/schema 时，本机三条路都不通：① app.asar 内部——Get-ChildItem/read 对 E:\\tools\\DSH\\resources\\app.asar\\dsh 是 PathNotFound（归档不是目录），经 probes/asar-read.mjs + DeepSeek Harness.exe 在受限会话通道里完全无输出且 $LASTEXITCODE 为空（进程没起来），cmd 写法踩 \\\" 引用坑；② profile 的 node_modules——C:\\Users\\dhhxfggg\\.dsh\\profiles\\node_modules\\@deepseek-ai\\* 全部是悬空 pnpm 符号链接（os error 3），Get-ChildItem 看不到；③ 磁盘上没有解包副本（app.asar.unpacked 无 node_modules）。结论：要读宿主包内部，只能在用户的**不受限终端**里跑 probes/asar-read.mjs；在本会话内不要为查一个配置键名花超过一次尝试。"
+}

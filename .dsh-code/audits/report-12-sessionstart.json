@@ -1,0 +1,41 @@
+{
+  "probe": "12-sessionstart",
+  "results": [
+    {
+      "id": "guard:boot-value-stable",
+      "claim": "the process identity the guard compares is the same on two calls in one process",
+      "outcome": "FAIL",
+      "evidence": {
+        "b1": "2026-10-04T13:11:54.263Z",
+        "b2": "2026-10-04T13:11:54.263Z",
+        "b3": "2026-10-04T13:11:54.262Z",
+        "distinct": 2
+      }
+    },
+    {
+      "id": "guard:one-line-per-process",
+      "claim": "four code_brief calls in one process leave one session_start line",
+      "outcome": "PASS",
+      "evidence": {
+        "sessionStartLinesAfterEachCall": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "lines": [
+          "{\"ts\":\"2026-10-04T13:11:55.394Z\",\"session\":\"audit12-session\",\"kind\":\"session_start\",\"processBoot\":\"2026-10-04T13:11:54.263Z\"}"
+        ]
+      }
+    },
+    {
+      "id": "guard:brief-journal-section",
+      "claim": "the brief's journal section is not filled with duplicate session_start rows",
+      "outcome": "PASS",
+      "evidence": {
+        "journalSection": "- 2026-10-04 13:11 session_start (this session):",
+        "sessionStartRows": 1
+      }
+    }
+  ]
+}

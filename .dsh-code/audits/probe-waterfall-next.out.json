@@ -1,0 +1,103 @@
+{
+  "checks": [
+    {
+      "id": "A1",
+      "name": "the REAL handler ran its warn branch (memory.warned set) — the branch is reached",
+      "ok": true,
+      "evidence": {
+        "warned": true,
+        "asked": 0,
+        "logs": []
+      }
+    },
+    {
+      "id": "A2",
+      "name": "the warning notice reaches the step: fallback sees it in payload.messages, or it is in the decision",
+      "ok": false,
+      "evidence": {
+        "fallbackArgumentCount": 2,
+        "fallbackPayloadMessages": 0,
+        "decisionMessages": [],
+        "decisionKind": "enter",
+        "asked": 0
+      }
+    },
+    {
+      "id": "A3",
+      "name": "the same bus delivers a message a listener appends AFTER next() (the control)",
+      "ok": true,
+      "evidence": {
+        "decisionMessages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "text",
+                "text": "AFTER-NEXT-CONTROL"
+              }
+            ]
+          }
+        ],
+        "fallbackArgs": 2
+      }
+    },
+    {
+      "id": "A4",
+      "name": "the human chose the handover: the instruction reaches the step",
+      "ok": false,
+      "evidence": {
+        "granted": 0.82,
+        "actionHonoured": true,
+        "fallbackPayloadMessages": 0,
+        "decisionMessages": []
+      }
+    },
+    {
+      "id": "A5",
+      "name": "a bare next(patch) is discarded by the real bus: the fallback gets the ORIGINAL payload",
+      "ok": true,
+      "evidence": {
+        "receivedMessages": [
+          "ORIGINAL"
+        ],
+        "nextArity": {
+          "length": 0
+        }
+      }
+    },
+    {
+      "id": "A6",
+      "name": "the fallback is called with exactly one argument (no patch slot)",
+      "ok": true,
+      "evidence": {
+        "observedArgs": [
+          "messages"
+        ]
+      }
+    },
+    {
+      "id": "A7",
+      "name": "through the probe-style merging harness the SAME handler DOES deliver the notice (the blind spot)",
+      "ok": true,
+      "evidence": {
+        "messages": [
+          "[code-compact-gate] context is at 68% of the window (68,000 of 100,000"
+        ]
+      }
+    }
+  ],
+  "notes": [
+    {
+      "bus": "real @deepseek-ai/cordis Context",
+      "gate": "E:\\projects\\dsh-code-mode\\lib\\compact-gate.js"
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "total": 7,
+    "failed": [
+      "A2",
+      "A4"
+    ]
+  }
+}
