@@ -357,6 +357,13 @@ const RUNNABLE = [
   'write-rule-probe.mjs',
   'brief-full-probe.mjs',
   'promotion-probe.mjs',
+  // Added 2026-10-04 with the two fixes they judge. Both import `lib/` only, so plain Node runs
+  // them — and both write the `-report.json` below, which is the contract this list requires.
+  // `pattern-budget-probe` is the one that measures the bound actually firing: the pit ledger
+  // records that the first version of this cure was "tested" with a pattern that returned in
+  // 0 ms, so a probe that only asserts "it did not hang" would repeat that mistake.
+  'pattern-budget-probe.mjs',
+  'repeat-identity-probe.mjs',
 ];
 const probeRuns = [];
 const electronRuns = [];

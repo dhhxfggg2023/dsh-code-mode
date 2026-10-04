@@ -154,4 +154,14 @@ console.log('\n=== R6: the advisory rides in `summary`, never as a key of its ow
 
 const failed = results.filter((r) => !r.pass);
 console.log(`\n${results.length - failed.length}/${results.length} passed${failed.length === 0 ? '' : ` — failed: ${JSON.stringify(failed.map((f) => f.id))}`}`);
+// Same contract as the other probes: `debt-audit.mjs` runs this with `stdio:'ignore'` and reads
+// this file, so a probe without one is recorded as "no conclusion" rather than as a pass.
+const reportPath = typeof process.env.DSH_PROBE_REPORT === 'string' && process.env.DSH_PROBE_REPORT.length > 0
+  ? process.env.DSH_PROBE_REPORT
+  : path.join(os.tmpdir(), 'repeat-identity-report.json');
+try {
+  fs.writeFileSync(reportPath, JSON.stringify({ probe: 'repeat-identity', passed: results.length - failed.length, total: results.length, failed: failed.map((f) => f.id), skipped: [] }, null, 2));
+} catch {
+  /* a report that cannot be written must not turn a green probe red */
+}
 process.exit(failed.length === 0 ? 0 : 1);

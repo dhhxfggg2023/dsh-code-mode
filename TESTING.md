@@ -29,6 +29,8 @@ $P = '<pkg>\probes'     # 本机是 E:\projects\dsh-code-mode\probes
 & '<node>' "$P\write-rule-probe.mjs"         # 写入侧告警 + 命中记账 + 重启追踪        期望 12/12
 & '<node>' "$P\brief-full-probe.mjs"         # code_brief({full:true}) 让更多条目可达 期望 4/4
 & '<node>' "$P\promotion-probe.mjs"          # 跨项目晋升：两项目才算候选          期望 6/6
+& '<node>' "$P\pattern-budget-probe.mjs"     # 坑的正则必须有界（判据必须让边界真的响）  期望 17/17
+& '<node>' "$P\repeat-identity-probe.mjs"    # 坑的身份：真重复仍合并、不同坑不再合并      期望 17/17
 & '<node>' "$P\syntax-check.mjs"             # lib/ 与探针的 ESM 解析（补 node --check 的假证据）期望 14/14
 & '<node>' "$P\utf8-check.mjs"               # 本轮改动文件的严格 UTF-8              期望 18/18
 

@@ -469,3 +469,10 @@
 - files: .dsh-code/audits/
 - do not repeat: pwsh 里凡是文件名/路径列表，元素一律加引号再交给 foreach 或 -Path；不要写裸词列表
 
+## 2026-10-04 · git-commit-有时还有-git-add-报-fatal-unable-to-create-repo-.git-i
+- symptom: `git commit`（有时还有 `git add`）报 `fatal: Unable to create '<repo>/.git/index.lock': Permission denied`（exit 128），而同一条命令里 `git status`、`git log` 正常；错误信息把原因指向 `.git` 的权限，实际与权限无关
+- cause: 不是 ACL，也不是「commit 需要 TEMP」这么简单——**是 TEMP/TMP 指向一个不存在的目录**。同一条命令里可以同时出现两种状态：宿主给每条命令设的一次性 TEMP（存在即成功），和我自己 `Resolve-Path '.git\.tmp-commit'` 设进去的值（该目录在**下一条命令**里已不存在 → 失败）。误导来自两点：① 每条命令的 TEMP 取值不同，所以同一个 git 命令时好时坏；② 我先试过把 `.git` 的 ACL 当成原因，而它那里确实有一条 `Everyone: Deny DeleteSubdirectoriesAndFiles`——但那**是预期存在的**，同一条命令里 `[System.IO.File]::Delete` 删 `.git` 内的文件完全成功，证据早就否定了 ACL。最终把 TEMP/TMP 指向一个真实存在且**跨命令稳定**的目录后，`git add` 与 `git commit` 都成功（本仓库 07a4eb4、0af7467 两次提交、工作区干净）。
+- fix: 在命令开头把两者钉到宿主真实存在的临时目录（不要钉进仓库，也**不要**钉到只在当前命令里创建、下一条就消失的目录）：`$env:TEMP = "$env:LOCALAPPDATA\Temp"; $env:TMP = $env:TEMP`，然后再跑 git add/commit。若 `$env:LOCALAPPDATA\Temp` 不存在，用任何已存在的目录。
+- trigger: git\s+(commit|merge|rebase|am|cherry-pick)\b
+- do not repeat: 在这个 host 上跑会写索引/临时文件的 git 命令前，先把 TEMP 与 TMP 钉到一个**真实存在且跨命令稳定**的目录；看到 "Unable to create .git/index.lock: Permission denied" 时不要去改 `.git` 的 ACL（那条 Everyone deny 是预期的），先检查 TEMP/TMP 指向的目录是否还存在
+

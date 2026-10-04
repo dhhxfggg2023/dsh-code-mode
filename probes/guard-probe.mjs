@@ -137,8 +137,13 @@ process.env.DSH_CODE_GLOBAL_DIR = hermeticGlobal;
     brief.text.length <= 4000 &&
       /40 mistake entr/.test(brief.text) &&
       (/- \[/.test(body) || /beyond this list/.test(body)) &&
+      // The note must arrive whole. It used to be appended and then cut by the section's own
+      // clip — `… (39 more entries beyond this list:…` — which told the reader entries were
+      // missing and not how to reach them. Measured 2026-10-04: the whole-note assertion is what
+      // caught it, so it is stricter than the presence test it replaces.
+      /code_brief\(\{topic\}\) to read it in full\)/.test(body) &&
       body.length <= 1400,
-    { chars: brief.text.length, mistakesChars: body.length, indexed: (body.match(/^- \[/gm) ?? []).length, head: body.slice(0, 160) },
+    { chars: brief.text.length, mistakesChars: body.length, indexed: (body.match(/^- \[/gm) ?? []).length, noteWhole: /code_brief\(\{topic\}\) to read it in full\)/.test(body), head: body.slice(0, 160) },
   );
   // A7: the way back is real — a query finds an entry the brief could not show,
   // and it comes back complete rather than as an index line.

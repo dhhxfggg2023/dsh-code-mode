@@ -168,4 +168,16 @@ console.log('\n=== P6: the async path pit-guard uses is unchanged in contract ==
 
 const failed = results.filter((r) => !r.pass);
 console.log(`\n${results.length - failed.length}/${results.length} passed${failed.length === 0 ? '' : ` — failed: ${JSON.stringify(failed.map((f) => f.id))}`}`);
+// Write the verdict where `debt-audit.mjs` reads it. It spawns this probe with `stdio:'ignore'`,
+// so stdout is unreachable to it; a probe with no report file is recorded as "no conclusion",
+// which is how five *passing* probes once read as failures. `DSH_PROBE_REPORT` overrides the
+// location for the Electron-style callers; the default name matches this file's stem.
+const reportPath = typeof process.env.DSH_PROBE_REPORT === 'string' && process.env.DSH_PROBE_REPORT.length > 0
+  ? process.env.DSH_PROBE_REPORT
+  : path.join(os.tmpdir(), 'pattern-budget-report.json');
+try {
+  fs.writeFileSync(reportPath, JSON.stringify({ probe: 'pattern-budget', passed: results.length - failed.length, total: results.length, failed: failed.map((f) => f.id), skipped: [] }, null, 2));
+} catch {
+  /* a report that cannot be written must not turn a green probe red */
+}
 process.exit(failed.length === 0 ? 0 : 1);
