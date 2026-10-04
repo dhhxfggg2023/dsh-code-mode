@@ -1,5 +1,25 @@
 # Audit — `lib/ledger.js` (2442 lines), core of the code-mode / code-ledger plugin pack
 
+> **Status as of 2026-10-04, later the same day: every finding below has been fixed.** This report
+> is kept as the record of what was wrong and how each claim was proved — its findings are written
+> in the present tense and are **not** a list of live defects.
+>
+> Fixes: commit `07a4eb4` (the tree's first commit) carried the twelve that were already closed
+> when this report was written — F1, F3/F7, F4, F5, F8, F9, F10, F11, F13, F14; commit `5f571ee`
+> closed the last two, F2 and F6.
+>
+> Two of those fixes came with the probe that would have caught them, because the ledger's own
+> record says a fix is not fixed until something would notice a regression:
+> `probes/pattern-budget-probe.mjs` (F2 — it asserts the bound *fires*, since the sibling cure in
+> `pit-guard` had once been "verified" with a pattern that returned in 0 ms without the bound ever
+> running) and `probes/repeat-identity-probe.mjs` (F6 — which pins both directions: unrelated pits
+> must stop merging, and a genuine repeat must still merge, because an over-exact identity would
+> have replaced data loss with ledger bloat). Both are in `debt-audit`'s `RUNNABLE` list.
+>
+> F2 was still reproducible when the second commit was written: `code_brief({topic})` took
+> **21,432 ms** on a 26-character topic and never returned at 34; it now returns in ~7 ms while a
+> normal recorded trigger still matches (probe P3a).
+
 Audited: `E:\projects\dsh-code-mode\lib\ledger.js` @ 2026-10-04, plus the call sites in
 `lib/tool-brief.js`, `lib/tool-record.js`, `lib/tool-verify.js`, `lib/gate-verify.js`,
 `lib/pit-guard.js` where they decide reachability.
