@@ -1,0 +1,22 @@
+# One checkout, one line ending.
+#
+# This host has `core.autocrlf=true`, so `git add` warned about converting all 89 probe files
+# and every `lib/*.js` from LF to CRLF. That matters more here than usual: the ledger's own
+# probes hash and compare file bytes, `probes/utf8-check.mjs` asserts a strict UTF-8/no-BOM
+# encoding for every tracked file, and a checkout that silently rewrote line endings would make
+# those assertions disagree with the committed content for reasons nothing in the error says.
+#
+# Pinning `eol=lf` means the bytes in the repository are the bytes the probes see, on any host.
+* text=auto eol=lf
+
+# Probes and ledger fixtures are compared byte-for-byte; never normalise them on the way in.
+*.mjs text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+
+# Binary, if it ever appears: no conversion, no diff.
+*.png binary
+*.jpg binary
+*.zip binary

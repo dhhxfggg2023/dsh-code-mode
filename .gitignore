@@ -1,6 +1,12 @@
 # Dependencies land here when the package is developed standalone.
 node_modules/
 
+# Commit-message temp files. `.commit-msg-*.txt` exists because this host's PowerShell has no
+# heredoc, so `git commit -F` needs a real file; the temp dir git itself writes (`.git/.tmp-*`)
+# is inside `.git` and never tracked anyway. See the machine ledger for the TEMP pit that made
+# a plain `git commit` fail here with a misleading "index.lock: Permission denied".
+.commit-msg-*.txt
+
 # The journal is the one ledger file that does NOT travel with the project.
 #
 # `DESIGN.md` §2.1 has said so since the beginning — "只有 journal.jsonl 排除在外，它是每次验证
