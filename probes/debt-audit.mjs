@@ -380,6 +380,13 @@ const RUNNABLE = [
   // belong to `pit-liveness`, `context-cost` and `mode-cost`, and one of its checks pins
   // that this report carries no field of its own for them.
   'effect-audit-probe.mjs',
+  // Added 2026-10-05 with the pit report. Same contract again: `lib/` only, plain Node, and it
+  // writes the `-report.json` this list requires — with no arguments it self-tests rather than
+  // reporting on whatever cwd it inherited, because this list spawns without arguments.
+  // What it adds is the join nobody had made: the read side records one event per matched
+  // entry, so entries that fire in the *same* action can be found, which is the redundancy a
+  // symptom-based merge cannot see. Read-only, and one of its checks pins that.
+  'pit-report.mjs',
 ];
 const probeRuns = [];
 const electronRuns = [];
@@ -458,7 +465,11 @@ for (const file of RUNNABLE) {
   // Measured 2026-10-04: pointing this read at a private per-run directory made five
   // *passing* probes read as `reported=false` — the audit asked for a file the child
   // never writes. The fixed name below is the correct one.
-  const reportFile = path.join(os.tmpdir(), `${file.replace(/-probe\.mjs$/, '')}-report.json`);
+  // Measured 2026-10-05, the day a report tool joined this list: the suffix is optional in
+  // the wild (`pit-report.mjs` is a tool, not a `-probe`), and a name that does not match
+  // makes this read `pit-report.mjs-report.json` — a file nothing writes, reported as
+  // `reported=false` while the tool itself exited 0. Derive from the basename either way.
+  const reportFile = path.join(os.tmpdir(), `${file.replace(/(?:-probe)?\.mjs$/, '')}-report.json`);
   // Delete it first so the read means "this run". What that removes is the case a previous
   // audit left the file behind: the mtime test below is the only thing that would catch it,
   // and it is the weaker guard of the two.

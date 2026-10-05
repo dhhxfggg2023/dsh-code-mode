@@ -24,6 +24,11 @@
  * fixtures under `os.tmpdir()` (machine layer redirected through `DSH_CODE_GLOBAL_DIR`), so
  * the tool is pinned by checks rather than by a human running it once and reading the output.
  *
+ * **No arguments means `--selftest`.** `debt-audit` spawns the probes in its list with no
+ * arguments and reads the verdict from `DSH_PROBE_REPORT`, so a tool that defaulted to
+ * "print a report about whatever cwd you inherited" would hand the audit a wall of markdown
+ * and no counts. Asking for a report is explicit:
+ *
  *   node probes/pit-report.mjs [--cwd <dir>] [--scope project|global|both] [--json <file>]
  *   node probes/pit-report.mjs --selftest
  */
@@ -108,6 +113,7 @@ function buildReport(cwd, now, scopes = ['project', 'global']) {
     scopes,
     entries: rows.length,
     collisions,
+    mergeCandidates: ledger.mergeCandidates(collisions),
     neverFired: rows.filter((r) => !r.inert && r.triggerHits === 0 && r.fileHits === 0),
     inert: rows.filter((r) => r.inert),
     blocks: rows.filter((r) => r.blocks > 0),
@@ -118,6 +124,20 @@ function buildReport(cwd, now, scopes = ['project', 'global']) {
 function render(report) {
   const lines = [];
   lines.push(`# Pit report — ${report.entries} entries across ${report.scopes.join(' + ')}`);
+  lines.push('');
+  lines.push('Worklist, cheapest first: (1) merge the near-duplicates below — it removes noise');
+  lines.push('without losing a rule; (2) judge any unjudged refusal; (3) for each never-fired');
+  lines.push('entry decide which of the two it is — a wrong rule, or a domain this machine does');
+  lines.push('not have; (4) give the "cannot arrive" entries a coordinate or retire them.');
+  lines.push('');
+  lines.push(`## Merge candidates (${report.mergeCandidates.length} pair(s)) — same subject, different symptoms`);
+  lines.push('');
+  if (report.mergeCandidates.length === 0) lines.push('(none — nothing fires together with an overlapping heading)');
+  for (const pair of report.mergeCandidates.slice(0, 15)) {
+    lines.push(`- overlap ${pair.overlap} on [${pair.shared.join(', ')}] — seen with \`${pair.commands[0]}\``);
+    lines.push(`  - ${pair.a}`);
+    lines.push(`  - ${pair.b}`);
+  }
   lines.push('');
   lines.push(`## Redundant: entries that fired together (${report.collisions.length} action(s))`);
   lines.push('');
@@ -170,7 +190,8 @@ const fixture = (entries) =>
     .join('\n');
 
 const FIXTURES = [
-  { heading: '2026-10-05 · fired-with-a-neighbour', trigger: 'alpha' },
+  { heading: '2026-10-05 · a-tracked-file-was-deleted-as-a-read-only-assertion', trigger: 'alpha' },
+  { heading: '2026-10-04 · a-tracked-file-deleted-while-asserting-read-only', trigger: 'alpha' },
   { heading: '2026-10-04 · fired-alone', trigger: 'beta' },
   { heading: '2026-10-03 · never-fired-here', trigger: 'zzz-never' },
   { heading: '2026-10-02 · no-coordinates', },
@@ -195,7 +216,8 @@ async function selfTest() {
     const action = '2026-10-05T12:00:00.000Z';
     const hit = (heading, extra = {}) =>
       ledger.journalEvent(cwd, { kind: 'trigger_hit', ts: action, session: 's1', root: cwd, heading, source: 'x', cmd: 'run alpha', ...extra }, 'project');
-    hit('2026-10-05 · fired-with-a-neighbour');
+    hit('2026-10-05 · a-tracked-file-was-deleted-as-a-read-only-assertion');
+    hit('2026-10-04 · a-tracked-file-deleted-while-asserting-read-only');
     hit('2026-10-04 · fired-alone');
     ledger.journalEvent(cwd, { kind: 'file_hit', ts: action, session: 's1', root: cwd, heading: '2026-10-05 · fired-with-a-neighbour', target: 'a.js' }, 'project');
     for (const heading of ['2026-10-05 · refused-unjudged', '2026-10-05 · refused-and-judged']) {
@@ -205,12 +227,21 @@ async function selfTest() {
     const now = Date.UTC(2026, 9, 6);
     const report = buildReport(cwd, now);
     const slug = (part) => report.neverFired.find((r) => r.heading.includes(part));
-    check('P1', 'entries that fired in one action are reported together', report.collisions.length === 1 && report.collisions[0].headings.length === 2, { collisions: report.collisions.map((c) => c.headings) });
+    check('P1', 'entries that fired in one action are reported together', report.collisions.length === 1 && report.collisions[0].headings.length === 3, { collisions: report.collisions.map((c) => c.headings) });
     check('P2', 'a file hit and a trigger hit in the same action are one collision, not two', report.collisions.filter((c) => c.headings.some((h) => h.includes('fired-alone'))).length === 1 && report.collisions.length === 1, { collisions: report.collisions.length });
     check('P3', 'an entry whose coordinate never matched is listed, with its age', slug('never-fired-here')?.ageDays === 3, { row: slug('never-fired-here') });
-    check('P4', 'an entry that did match is not listed as never fired', slug('fired-alone') === undefined && slug('fired-with-a-neighbour') === undefined, { wrong: [slug('fired-alone') !== undefined, slug('fired-with-a-neighbour') !== undefined] });
+    check('P4', 'an entry that did match is not listed as never fired', slug('fired-alone') === undefined && slug('read-only-assertion') === undefined, { wrong: [slug('fired-alone') !== undefined, slug('read-only-assertion') !== undefined] });
     check('P5', 'an entry with no coordinates is "cannot arrive", not "never fired"', report.inert.length === 1 && report.inert[0].heading.includes('no-coordinates') && slug('no-coordinates') === undefined, { inert: report.inert.map((r) => r.heading) });
     check('P6', 'refusals are reported, and the one with no verdict is flagged', report.blocks.length === 2 && report.unjudgedBlocks.length === 1 && report.unjudgedBlocks[0].heading.includes('refused-unjudged'), { unjudged: report.unjudgedBlocks.map((r) => r.heading) });
+    check(
+      'P11',
+      'two entries of one subject, worded differently, come out as one merge candidate',
+      report.mergeCandidates.length === 1 &&
+        report.mergeCandidates[0].overlap >= 0.34 &&
+        report.mergeCandidates[0].shared.some((w) => w.includes('tracked')) &&
+        report.mergeCandidates[0].commands.length === 1,
+      { candidates: report.mergeCandidates.map((c) => ({ overlap: c.overlap, shared: c.shared, commands: c.commands.length })) },
+    );
 
     const text = render(report);
     const sectionOf = (title) => {
@@ -221,7 +252,7 @@ async function selfTest() {
       return end === -1 ? rest : rest.slice(0, end);
     };
     check('P7', 'the "never fired" section names the unfired entry and not the fired one', sectionOf('Never fired').includes('never-fired-here') && !sectionOf('Never fired').includes('fired-alone'), { section: sectionOf('Never fired') });
-    check('P8', 'the collision section names both entries of the pair', sectionOf('Redundant').includes('fired-with-a-neighbour') && sectionOf('Redundant').includes('fired-alone'), { section: sectionOf('Redundant') });
+    check('P8', 'the collision section names both entries of the pair', sectionOf('Redundant').includes('read-only-assertion') && sectionOf('Redundant').includes('fired-alone'), { section: sectionOf('Redundant') });
 
     const journalBefore = fs.readFileSync(path.join(cwd, '.dsh-code', 'journal.jsonl'), 'utf8');
     const again = buildReport(cwd, now);
@@ -250,14 +281,14 @@ async function selfTest() {
   }
   const failed = checks.filter((c) => !c.ok);
   const report = { probe: 'pit-report', passed: checks.length - failed.length, total: checks.length, failed: failed.map((c) => `${c.id} ${c.name}`), checks };
-  const out = process.env.DSH_PROBE_REPORT ?? tempReport('pit-report-selftest.json');
+  const out = process.env.DSH_PROBE_REPORT ?? tempReport('pit-report-report.json');
   fs.writeFileSync(out, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
   if (failed.length > 0) process.stderr.write(`PIT-REPORT-DETAIL ${JSON.stringify({ failed: failed.map((c) => ({ id: c.id, evidence: c.evidence })) })}\n`);
   console.log(JSON.stringify({ passed: report.passed, total: report.total, failed: report.failed }, null, 2));
   process.exitCode = failed.length === 0 ? 0 : 1;
 }
 
-if (args.includes('--selftest')) {
+if (args.includes('--selftest') || args.length === 0) {
   await selfTest();
 } else {
   const cwd = argOf('--cwd', process.cwd());
