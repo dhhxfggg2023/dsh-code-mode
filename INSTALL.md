@@ -22,6 +22,7 @@ mode id = `code`，显示名「编程模式」由 preset 声明自带（内置 l
 | 正则兜底 | `lib/pattern-matcher.js` | 纯函数库（无 loader 导出，**不能**作为 plugin 行注册）：在可复用的 worker 线程里跑一个 `trigger:` 并在 250 ms 后放弃。记录的正则是一种可以从账本文件进来的数据，而 JS 没有正则超时，所以约束来自「这个模块能终止的那个线程」；超时算**不匹配**，绝不挂住 `pre-execute` |
 | 判据 | `probes/` | 验证工具集，见 `probes/README.md` |
 | 能力总览 | `OVERVIEW.md` | 给使用者看的一份「它会做什么」总览：十个能力、两层账本的分法、以及边界（哪些是声称、哪些是实测） |
+| 无坐标条目分类 | `AUDIT-inert-entries.md` | 一次具体处置的记录：机器账本里 42 条「既没 `trigger:` 也没 `files:`」的条目按"属于这台机器还是属于某个项目"分了类——23 条已就地标注 `- applies:`、12 条待补坐标、3 条本就属于项目层。**未执行的部分也写明了**（没搬进别的项目、也没让 `brief` 过滤） |
 | 实战教训 | `LESSONS.md` | 这个模式自己踩出来的五个真缺陷与四条流程教训 |
 
 项目账本落在**项目内** `.dsh-code/`：`project.json`、`tasks.json`、`decisions.md`、`mistakes.md`、`journal.jsonl`。

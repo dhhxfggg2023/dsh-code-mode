@@ -285,6 +285,7 @@ const shippedText = [
   'INSTALL.md',
   'LESSONS.md',
   'OVERVIEW.md',
+  'AUDIT-inert-entries.md',
   'TESTING.md',
   'package.json',
   'cordis.patch.yml',
