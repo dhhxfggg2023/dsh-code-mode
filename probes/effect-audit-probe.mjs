@@ -907,6 +907,37 @@ check(
   { state: statelessDebt.state, total: statelessDebt.debts },
 );
 
+/**
+ * The hit rates, carried **with their owner named** — not recomputed here.
+ *
+ * `E4` used to require these statistics to be absent from the report entirely, and that was
+ * the right guard while the command-side count lived inside `probes/pit-liveness.mjs`:
+ * quoting it would have meant a second implementation of one number, which this repository
+ * has paid for twice. Since 2026-10-05 that count is ledger knowledge (`lib/ledger.js`
+ * `triggerHitCounts`, mirroring `fileHitCounts`), so there is **one owner and this file is a
+ * second caller** — which is what makes it possible to report a hit rate at all, and what
+ * makes quoting it correct rather than duplicative.
+ *
+ * The field names here are deliberately **not** the ones `FORBIDDEN_KEYS` names
+ * (`never_seen`, `promotions`, …): those stay forbidden anywhere in this report, so the old
+ * guarantee is untouched and the new one is added on top of it rather than in place of it.
+ *
+ * Declared **above** `E4` on purpose: the check reads it, and a `const` used before its
+ * declaration is a temporal-dead-zone `ReferenceError` that kills the whole module — which
+ * is exactly what the first version of this block did (line 963 reading a binding declared
+ * at 1170), taking the report and four `debt-audit` checks down with it.
+ */
+const projectTriggerHits = ledger.triggerHitCounts(PKG_DIR, 'project');
+const projectFileHits = ledger.fileHitCounts(PKG_DIR, 'project');
+const hitRates = {
+  owner: 'probes/pit-liveness.mjs',
+  source: 'lib/ledger.js: triggerHitCounts / fileHitCounts',
+  read_here: false,
+  scope: 'project',
+  headings_with_a_trigger_hit: projectTriggerHits.size,
+  headings_with_a_file_hit: projectFileHits.size,
+};
+
 // ---------------------------------------------------------------------- E4
 /**
  * Ownership is asserted by *field name*, not by the absence of a word in prose.
@@ -947,7 +978,7 @@ const ownershipKeys = deepKeys(ownership);
 const PROBE_POINTER = /^probes\/(pit-liveness|context-cost|mode-cost)\.mjs$/;
 check(
   'E4',
-  'liveness is attributed to `pit-liveness` by field name, and no field of this report recomputes it',
+  'liveness is attributed to `pit-liveness` by field name, its rates are quoted from the shared ledger functions, and this report recomputes neither',
   ownership.liveness.owner === 'probes/pit-liveness.mjs' &&
     ownership.liveness.read_here === false &&
     PROBE_POINTER.test(ownership.liveness.owner) &&
@@ -955,12 +986,22 @@ check(
     ownershipKeys.filter((key) => FORBIDDEN_KEYS.includes(key)).length === 0 &&
     // The detector has teeth: the same walk over an object that does carry the forbidden
     // statistics must find them, or "absent" is a statement about the walk, not the report.
-    deepKeys({ promotions: [{ heading: 'x' }], never_seen: 3 }).filter((key) => FORBIDDEN_KEYS.includes(key)).length === 2,
+    deepKeys({ promotions: [{ heading: 'x' }], never_seen: 3 }).filter((key) => FORBIDDEN_KEYS.includes(key)).length === 2 &&
+    // Added 2026-10-05: reporting a rate is now required *and* bounded to a citation. The
+    // numbers must equal what the shared owner returns, called here in the same breath — so a
+    // self-implemented copy that drifted would disagree, and "it quotes the owner" is a
+    // measurement rather than a claim about the report's own arithmetic.
+    hitRates.owner === 'probes/pit-liveness.mjs' &&
+    hitRates.source === 'lib/ledger.js: triggerHitCounts / fileHitCounts' &&
+    hitRates.read_here === false &&
+    hitRates.headings_with_a_trigger_hit === ledger.triggerHitCounts(PKG_DIR, 'project').size &&
+    hitRates.headings_with_a_file_hit === ledger.fileHitCounts(PKG_DIR, 'project').size,
   {
     owner: ownership.liveness.owner,
     forbiddenPresent: ownershipKeys.filter((key) => FORBIDDEN_KEYS.includes(key)),
     keysWalked: ownershipKeys.length,
     own: ownership.own,
+    hitRates: { ...hitRates, attributed_to: ownership.liveness.owner },
   },
 );
 
@@ -1142,10 +1183,26 @@ for (const [label, audit] of [
     unproven_unsettled: entry.debt?.unproven_unsettled,
   }));
 }
+/**
+ * The hit rates, carried **with their owner named** — not recomputed here.
+ *
+ * `E4` used to require these statistics to be absent from the report entirely, and that was
+ * the right guard while the command-side count lived inside `probes/pit-liveness.mjs`:
+ * quoting it would have meant a second implementation of one number, which this repository
+ * has paid for twice. Since 2026-10-05 that count is ledger knowledge (`lib/ledger.js`
+ * `triggerHitCounts`, mirroring `fileHitCounts`), so there is **one owner and this file is a
+ * second caller** — which is what makes it possible to report a hit rate at all, and what
+ * makes quoting it correct rather than duplicative.
+ *
+ * The field names here are deliberately **not** the ones `FORBIDDEN_KEYS` names
+ * (`never_seen`, `promotions`, …): those stay forbidden anywhere in this report, so the old
+ * guarantee is untouched and the new one is added on top of it rather than in place of it.
+ */
 const report = {
   probe: 'probes/effect-audit.mjs',
   owns: ownership.own,
   ownership,
+  hitRates,
   measurements,
   how_numbers_are_counted: how,
   evidence_by_fixture: evidence,
