@@ -45,6 +45,7 @@ $env:ELECTRON_RUN_AS_NODE='1'
 & '<install>\DeepSeek Harness.exe' --expose-internals "$P\gate-probe.mjs"           # 期望 39/39
 & '<install>\DeepSeek Harness.exe' --expose-internals "$P\gate-journal-probe.mjs"   # 期望 7/7
 & '<install>\DeepSeek Harness.exe' --expose-internals "$P\pit-guard-probe.mjs"      # 期望 33/33
+# pit-report 不需要 Electron：node probes/pit-report.mjs --selftest   # 期望 12/12
 & '<install>\DeepSeek Harness.exe' --expose-internals "$P\aegis-activation-probe.mjs" # 期望 5/5
 Remove-Item Env:ELECTRON_RUN_AS_NODE
 ```

@@ -594,3 +594,18 @@
 - do not repeat: Windows 上一律不要把 JSON 字面量或含引号的脚本内联进 `node -e`/`python -c`/`cmd /c`（`--eval` 同理）；要写多行/带引号的脚本先落文件。另外：pit-guard 记的失败命令是前 200 字符的截断文本，**别把"记录里的命令行"当成"实际执行过的命令行"的唯一来源**。
 - 安全情形（2026-10-05 实测补记，不改 trigger 的理由）：**单引号包脚本、且脚本内无引号**（如 `node -e 'const x=1;console.log(x)'`）在这台机器上实测能跑通；本 trigger 仍会命中它。原因是"命令里有没有引号"与正则可达的字符不是同一个东西：`node -e "…\"…\"…"` 就是一次"有引号的检测"看不到引号，收紧到能表达该前提的写法会漏掉它。所以这里选择**不改 trigger**（宁可多响一次），改的是这条规则。
 - merged: 2026-10-05 由 `probes/pit-report.mjs` 的合并建议并自同日第二条同症状条目；原文仍在 `journal.jsonl` 与本文件编辑前的备份里。
+## 2026-10-05 · 我用-pit-report-做合并建议时-连续三轮把同一族条目判成-文件里不存在-报告把机器账本里的条目算进条目表-而我-2pyj2
+- symptom: 我用 `pit-report` 做合并建议时,连续三轮把同一族条目判成"文件里不存在":报告把机器账本里的条目算进条目表,而我拿**项目**文件的标题去比对;以及合并脚本按 journal 里的标题字面去文件里找,找不到就抛错。
+- cause: 条目身份是标题(去日期),而 journal 事件按写入时的标题记;两者在**改名/合并**那一刻分叉。且报告要跨两个账本读,同一族条目可能住在不同文件里——只比对其中一个文件就会把另一个账本的条目全判成孤儿。
+- fix: (1) 新增并导出 `headingKey(heading)`,事件与条目都按它对齐;(2) 报告把两个 scope 的计数**混合**后按身份挂到条目上(`pit-guard` 把每次命中都写进项目 journal,靠 `source` 记条目住在哪个文件);(3) 合并候选带上 `aScope`/`bScope`(反查条目居所),不要用 collision 自带的 scope——那是**事件所在 journal**,永远是项目。
+- files: lib/ledger.js, probes/pit-report.mjs
+- trigger: pit-report|mergeCandidates|headingKey
+- do not repeat: 改账本条目时,先问「我用什么当这条条目的身份」:条目身份是**标题去日期**(`headingKey`),不是手抄的标题字面,也不是 journal 里的键。合并/改名后 journal 里的旧标题会变成"无对应条目的事件"——那**不是孤儿**,是退休标题,报告里要允许它存在,否则你会以为数据丢了。
+
+## 2026-10-05 · 我给-pit-report-写机器层-fixture-时用了-home-.dsh-code-mistakes.md-于是-qxyae
+- symptom: 我给 `pit-report` 写机器层 fixture 时用了 `<home>/.dsh-code/mistakes.md`,于是那一层永远读不到:真实报告少读了整层(176 条条目里少了 88 条),而自测里的 P12 一直红——我连着三轮去查别的原因。
+- cause: 项目层是 `<cwd>/.dsh-code/mistakes.md`,机器层是 `<globalDir()>/mistakes.md`——两者只差一层,凭直觉补 `.dsh-code` 就写到了不存在的路径。`entriesOf` 读不到文件时返回空数组(设计如此,不抛错),于是失败是**静默**的:报告少读了整个机器层,fixture 永远为空。
+- fix: fixture 直接写 `<home>/mistakes.md`;并加判据 P12 断言"被项目 journal 命中过的机器条目**被计入**且不在 neverFired 里",让"看不见机器层"这件事必然变红。
+- files: lib/ledger.js, probes/pit-report.mjs
+- do not repeat: 写机器账本的 fixture 前先看 `globalDir()` 返回什么:`DSH_CODE_GLOBAL_DIR` 指向的**就是账本目录本身**,文件是 `<它>/mistakes.md`,**没有** `.dsh-code` 这一层(项目层才有)。依赖路径的判据要有一条"能看见机器条目"的正向断言,否则 fixture 永远读不到而判据照样绿/红得没有意义。
+
