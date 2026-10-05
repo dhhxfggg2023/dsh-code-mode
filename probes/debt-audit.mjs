@@ -364,6 +364,22 @@ const RUNNABLE = [
   // 0 ms, so a probe that only asserts "it did not hang" would repeat that mistake.
   'pattern-budget-probe.mjs',
   'repeat-identity-probe.mjs',
+  // Added 2026-10-05 with the derived handover. Same contract as the two above: it
+  // imports `lib/ledger.js` only, so plain Node runs it, and it writes the
+  // `-report.json` this list requires. What it adds is the half no other probe covers —
+  // a *derived* view that must stay derived: the proved kept apart from the unproved, no
+  // conversation narrative in the output, bounded, and read-only.
+  'handover-derive-probe.mjs',
+  // Added 2026-10-05 with the effect audit. Same contract as the entries above: it imports
+  // `lib/` only, so plain Node runs it, and it writes the `-report.json` this list requires.
+  // What it adds is the question none of the others ask — whether the mechanisms this
+  // repository builds have ever *produced* anything, as opposed to whether they behave as
+  // specified. Its scope is narrow on purpose: gate cost (from the `kind:'unverified'`
+  // entries the gate writes unconditionally, rotated segments included) and the per-session
+  // prefix the mode owns. Liveness and context cost are **named, not recomputed** — those
+  // belong to `pit-liveness`, `context-cost` and `mode-cost`, and one of its checks pins
+  // that this report carries no field of its own for them.
+  'effect-audit-probe.mjs',
 ];
 const probeRuns = [];
 const electronRuns = [];

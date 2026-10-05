@@ -20,6 +20,32 @@ const UNZSTD = path.join(PROBES_DIR, 'unzstd.cjs');
 const OUT = tempReport("session-latest.jsonl");
 const store = path.join(process.env.USERPROFILE ?? '', '.dsh', 'sessions');
 
+const args = process.argv.slice(2);
+const flag = (name) => {
+  const at = args.indexOf(name);
+  return at === -1 ? undefined : args[at + 1];
+};
+/**
+ * `--path <log>` checks one named session log instead of the newest.
+ *
+ * Added 2026-10-05, because this file is the **only** place that knows how to ask "did this
+ * session receive the `code-ledger` section?", and it could only ask about the newest log.
+ * The question that actually needs asking is the *opposite* one — does a session that ran on
+ * a different preset **lack** the section? — and answering that by hand in a shell is how a
+ * second implementation gets born and then forgotten (this repository has paid for owner
+ * drift twice: `pattern-matcher`, and the read the handover had to split).
+ *
+ * It matters because the section's heading is the only per-session marker of "this session
+ * ran the `code` preset", so it is the denominator for every zero-evidence claim about a
+ * mechanism that only exists in that preset. Measured 2026-10-05: the newest log of this
+ * project has 1 `system/message` frame carrying `## Project ledger`; a 2026-09-13 log from
+ * another project (recorded before the preset existed) has 1 frame and 0 hits.
+ *
+ * The default is unchanged — newest log — so existing callers and the `[PASS]` line in
+ * TESTING.md behave exactly as before.
+ */
+const ONLY_PATH = flag('--path');
+
 /** Newest session log anywhere under the storage root. */
 function newestLog(dir) {
   let best;
@@ -37,7 +63,7 @@ function newestLog(dir) {
   return best;
 }
 
-const found = newestLog(store);
+const found = ONLY_PATH === undefined ? newestLog(store) : { full: ONLY_PATH, mtime: fs.statSync(ONLY_PATH).mtimeMs };
 if (found === undefined) throw new Error(`no session logs under ${store}`);
 console.log(`newest log: ${found.full} (${new Date(found.mtime).toISOString()})`);
 
@@ -104,7 +130,23 @@ console.log(
     2,
   ),
 );
+const allPresent = Object.values(result).every(Boolean);
+/**
+ * `[FAIL]` must also be an exit code.
+ *
+ * Measured 2026-10-05: this file printed `[FAIL]` for a log that never received the section
+ * and still exited **0**. Any caller that trusts the exit code — a CI step, a `&&` chain,
+ * `debt-audit` — therefore read a *missing* prompt section as success. A judgment that
+ * cannot fail a pipeline is a report, not a judgment, and `probes/README.md` states the
+ * convention this file was breaking ("每个探针失败时非零退出").
+ *
+ * The two cases that produce `[FAIL]` are different and both must fail: needles missing
+ * from a carrier frame, and *no carrier frame at all* — the second is the failure this
+ * probe was originally written for (a host that stopped sending the section, where an
+ * echo in the log could still have made the old whole-log search pass).
+ */
+process.exitCode = allPresent ? 0 : 1;
 console.log(
-  `\n[${Object.values(result).every(Boolean) ? 'PASS' : 'FAIL'}] the code-ledger section, Working habits included, is present in the system prompt the model was sent` +
+  `\n[${allPresent ? 'PASS' : 'FAIL'}] the code-ledger section, Working habits included, is present in the system prompt the model was sent` +
     (carriers.length === 0 ? ' — but NO system/message frame was found at all, so nothing was actually checked' : ''),
 );

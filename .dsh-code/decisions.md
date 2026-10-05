@@ -86,3 +86,21 @@ Rejected: ① 彻底禁用内置压缩（profile `compaction-basic: auto:false`�
 
 Rejected: ① 在 ledger.js 里复制一份有界匹配器——否决：两个 owner 必然漂移，本项目已为同类问题付过学费；② 只在写入侧拒绝嵌套量词——否决：code_verify 的 expect 由模型现场给，不经过写入侧；③ 直接取消 trigger 正则匹配——否决：那是坑门禁命令侧的核心价值；④ 把整段 brief 放进 worker——否决：改动面远大于病本身，且 brief 要读文件、传上下文，成本与风险都不成比例。
 
+## 2026-10-05 · 转接收窄成两段（接下来/避免），因此改为从账本派生，而不是让模型每次写整篇
+
+用户 2026-10-05 把转接（handover）的内容收窄成只有两件事：**接下来要做的** + **需要避免的**；并明确排除"不相关的话"与"用户的气话"。<br><br>**决定**：`handover()` 做成 `lib/ledger.js` 里的一个**只读派生函数**，复用 brief 的同一批内部读函数（`boardSummary`/`unverifiedExcerpt`/`unrecordedMistakes`/`mistakeExcerpt`/`decisionExcerpt`/`restartPending`/`clip`），输出**恰好两段**有界 markdown；调用方只传两个不可派生字段 `nextMove`（下一步）与 `stoppedBecause`（为何停）。<br><br>**理由**：① 收窄后几乎全部内容都可派生——"接下来"≈任务板在飞任务与未验证的债，"避免"≈带 `trigger:`/`files:` 的坑与不该重争的决定；② "用户的气话不要"这条由**结构**保证而不是由提示词约束——渲染器只读结构化账本条目，从不读对话原文，所以气话在结构上无法进入；唯一可能漏进语气的是模型写的那两个字段，而它正好被已有的写入侧告警（`PROSE_FIELD_LIMIT`、"既无 files 又无 trigger"告警）盖住；③ 派生不会陈旧，手工维护会。<br><br>**判据**：新增 `probes/handover-derive-probe.mjs`，其中 N3 是**反向**判据（叙事关键词必须进不来，且要先证明这组关键词有牙齿），N7 钉住 `handover()` 只读（调用前后账本字节不变）。
+
+Rejected: ① **保持现状**：让模型每次收尾自己写整篇转接（`handoverText` 现在的做法）——被否，因为那正是"用户的气话/无关话"能漏进来的唯一入口，且每次成本随会话长度增长。<br>② **用户最初提议的"把转接文档写进账本、实时更新"**——被否：转接就不再是转接，而变成**第二份摘要**，账本一份、转接一份，两份会漂移；本项目已为"两个 owner 漂移"付过学费（`pattern-matcher` 那次，task note 有原话）。改成派生视图后，同一份事实只有一个 owner。<br>③ **把转接写进全局账本**（用户提"全局账本共通"）——被否：全局的定义是"换个项目还会咬你的事实"，转接正好是它的反面（极度项目专属、极度易腐），写进去会把本项目在飞的工作泄漏进这台机器上每个会话的 brief。
+
+## 2026-10-05 · 效果审计不重算 liveness（那是 pit-liveness 的 owner），只 own 门禁代价与净成本
+
+初稿的 `PLAN-effect-audit.md` 打算让效果审计重算「命中率 / 从未命中 / 零产出机制」——**那是在造第二个 owner**。`probes/pit-liveness.mjs` 已经在做 liveness（坏 trigger、失效指针、never-seen 命令、file-keyed never-matched、跨项目晋升候选），而且它的口径**已经被修过一次**：`neverSeen` 从"重放 trigger 正则"改成读真实 `trigger_hit` 事件，理由写在任务板上——重放会因命令被截断 200 字符而漏报、因复述而误报。再写一份必然与它漂移。<br><br>**决定**：效果审计的分工收窄为**只 own 无人拥有的三项**——① 门禁代价；② 每回合/每会话净上下文成本（`context-cost`/`mode-cost` 有算法，但没人做跨会话聚合）；③ 会话级/回合级代价分布。liveness 部分**引用 `pit-liveness` 的输出**，不重算；两边数字不一致时**报为缺陷**，而不是各自算各自的。<br><br>**同一轮查到的、决定这件事怎么做的事实**：`DSH_CODE_GATE_JOURNAL`（`lib/ledger.js:1959`）是一个**指向文件的路径**（不是布尔开关），`lib/gate-verify.js` 在 `edit`/`run`/`other-tool`/`notice`/`notice-delivered`/`turn-stopping` 六处调 `appendGateJournal`。实测 glob：**磁盘上不存在任何 gate-journal 数据文件**，只有读它的 `probes/gate-journal-probe.mjs`。所以**门禁代价没有历史数据、不可能事后补算**，想量只能从现在开始开着收。但有一个**已经无条件在落盘**的替代：`lib/ledger.js:1987` 的 `recordUnverified` 写 `kind:'unverified'` 条目，不受该开关约束——brief 的「Turns that changed code and ran nothing」段就是读它。所以效果审计第一步可回溯地回答「多少回合改完代码却没有任何证据收尾」，而「这次 notice 有没有送达」仍需 gate-journal。
+
+Rejected: ① **效果审计自己重算 liveness**（初稿）——被否：第二个 owner，且必然与 `pit-liveness` 修过的口径漂移；本项目已为「两个 owner 漂移」付过学费（`pattern-matcher`）。<br>② **直接把 `pit-liveness` 改名/扩成效果审计**——被否：它跑在受限通道里有 spawn 限制的历史，且它的判据（坏 trigger、失效指针）与"代价"是两类问题，混在一个探针里会让"红了到底是机制坏了还是代价变高了"无法分辨。<br>③ **先开 `DSH_CODE_GATE_JOURNAL` 收一段时间再建审计**——被否（暂时）：开关是进程级环境变量，改了要重启 DSH，而重启会终结本会话；而且 `kind:'unverified'` 已经能让第一步今天就跑。
+
+## 2026-10-05 · 不强行触发闸门验证，改为自动发现；并把"零证据机制"与人欠的动作都变成账本里的待办
+
+用户 2026-10-05 指出「强行推到 0.75 过于浪费 token」，并提议「写个自动审核机制，如果我忘了就你上场记录了」。<br><br>**决定**：Gate 0 从"必须由人制造一次越线"改为"**自动发现**自然发生的越线"。理由不止省钱：人为填满上下文得到的是一次**非代表性条件下的测量**，而本项目自己的规矩是 *run it the way the real caller will*（这条在项目 working habits 里）；而且**「它会不会自然发生」本身就是该报的结果**——90 个会话里 28 个峰值落在 75-80%，但闸门挂载后同一项目反而没接近过（挂载后最大单请求 86,585），这个反差本身就是信息，不该用人造条件抹掉。<br><br>**机制三件**（写进 `PLAN-effect-audit.md` 第八节）：① 机制的「首次真实触发」自动发现——`compact-gate` 的判据是它在真实会话日志里作为消息源的次数（今天 **0** 次），这正是当初查出「两条通知从未送达」的同一个检测法，且已被证明有效（同批日志 `pit-guard` 1398 次、`gate-verify` 8 次）；② 「零证据机制」清单进 brief 的**预留 notices**（复用 `restart_pending` 已建的那条通道，它专门修过「通知被 clipTail 裁掉」）；③ 人欠的动作落成账本里有坐标的待办，由证据结清。<br><br>**为什么第 ③ 条是缺口**：今天**机制欠的债有人管**（`unverified`、`unrecordedMistakes`、`restart_pending` 三条都已建），而**人欠的动作只有散文在管**——Gate 0 原先只活在消息和一个 task note 里，跨会话就会丢。<br><br>**预算约束（已写进 plan）**：`code_brief` 是读函数（`lib/ledger.js` 明确注释它故意不写 `session_start`），所以检查必须纯读，且必须先定有界口径（只看最新 N 份日志／用已落盘标记做增量）并把口径写进报告——否则它自己就变成一条"从未被验证过成本"的机制。
+
+Rejected: ① **按原计划强行把上下文推到 0.75**——被否：非代表性条件，且为一个人造数据点烧掉大量 token；用户明确指出这一点。<br>② **完全放弃验证，等它自然发生再说**——被否：那就回到了"人得记得去看"，而 110 个会话里没人看过一次（`code-compact-gate` 消息源计数 **0**）。缺的不是等待，是**自动发现**。<br>③ **新增一个定时任务/后台守护去轮询会话日志**——被否（本轮）：本会话没有可持久的调度器；`code_brief` 是天然的每会话钩子，且预留 notices 通道已存在，复用比自己造调度便宜得多。
+

@@ -37,7 +37,7 @@ import path from 'node:path';
 // throws `ERR_UNSUPPORTED_ESM_URL_SCHEME` (only file:/data:/node: URLs are allowed, so a
 // raw path needs `pathToFileURL`). `lib/ledger.js` has no bare imports, so plain Node
 // resolves it directly and none of that is needed.
-import { crossProjectTriggers, readJournalText, siblingProjects } from '../lib/ledger.js';
+import { DIRNAME, crossProjectTriggers, readJournalText, siblingProjects } from '../lib/ledger.js';
 
 const args = process.argv.slice(2);
 const AS_JSON = args.includes('--json');
@@ -205,6 +205,36 @@ const triggers = rows.filter((row) => row.trigger !== undefined);
 const fileKeyed = rows.filter((row) => row.files !== undefined);
 /** A `files:` entry whose path resolves but has never matched an edit: present, never useful. */
 const blindFiles = fileKeyed.filter((row) => (row.filesMissing ?? []).length === 0 && (row.filesSeen ?? 0) === 0);
+
+/**
+ * Entries with **no arrival coordinate at all** — neither a `trigger:` nor a `files:`.
+ *
+ * A pit can only reach someone at the moment it applies by one of those two routes: the
+ * `trigger:` intercepts the command about to run, the `files:` intercepts the edit about to
+ * happen. An entry with neither can do neither — it can only appear in a briefing, where it
+ * competes for room on recency alone and, being cold, stops being shown.
+ *
+ * Measured 2026-10-05, and the contrast is the finding: this project's ledger is 3/73
+ * (4.1%) while the **machine-wide** one — read at the start of every session in *every*
+ * project — is **39/91 (42.9%)**. The reason looks structural rather than careless: a pit
+ * about the *machine* (a shell quirk, a sandbox rule, a hosts redirect, the two channels'
+ * different rights) usually has no file to name, so `files:` cannot honestly be written for
+ * it — while a pit about this repository almost always has one.
+ *
+ * Reported, never failed on: the write-side warning already fires when such an entry is
+ * recorded (the no-`files:`-and-no-`trigger:` notice in `lib/ledger.js`), so what this adds
+ * is the **stock** that warning never measured — a growing one is what to act on, not one
+ * entry. It is the same distinction the rest of this file keeps drawing: "cannot arrive" is
+ * not "has not arrived yet".
+ */
+const inertByScope = ['project', 'global']
+  .map((scope) => {
+    const all = rows.filter((row) => row.scope === scope);
+    return { scope, entries: all.length, inert: all.filter((row) => row.trigger === undefined && row.files === undefined).length };
+  })
+  .filter((entry) => entry.entries > 0);
+const inertTotal = inertByScope.reduce((sum, entry) => sum + entry.inert, 0);
+const entriesTotal = inertByScope.reduce((sum, entry) => sum + entry.entries, 0);
 const neverSeen = triggers.filter((row) => (row.everSeen ?? 0) === 0);
 const crossProject = rows.filter((row) => (row.crossProject ?? []).length > 0);
 
@@ -223,10 +253,28 @@ const crossProject = rows.filter((row) => (row.crossProject ?? []).length > 0);
  * failed on: filing a fact in the wrong scope is a judgement the human makes, and a
  * second project is a prompt to look, not a defect that should paint a probe red.
  */
-const promotions = crossProjectTriggers([project, ...siblingProjects(project)]);
+/**
+ * The roots the promotion scan can see, and whether its condition is satisfiable at all.
+ *
+ * `crossProjectTriggers` keeps only rules whose hits span **more than one** project, so
+ * with a single scanned root that filter cannot pass — yet the report below used to say
+ * `no cross-project promotion candidates`, which reads as "nothing has crossed a boundary
+ * yet" while the truth was "this machine cannot cross one".
+ *
+ * Measured 2026-10-05: `E:\projects` holds exactly one directory with a ledger, and
+ * `~/.dsh/projects` does not exist at all — zero siblings, so the promotion report was
+ * **structurally unreachable, not empty**. That is the same shape as the compaction gate
+ * sitting at 0.8 (a guard placed where real work cannot reach it), and the fix is the one
+ * this repository keeps re-learning: say **which** of "no data" and "data says none" you
+ * mean. `unverified` vs `unjudgeable`, `assert` vs `control` — same distinction.
+ */
+const scannedRoots = [...new Set([project, ...siblingProjects(project)])];
+const promotions = crossProjectTriggers(scannedRoots);
+/** The filter needs hits in *two* projects; one root cannot satisfy it however hard it tries. */
+const promotionReachable = scannedRoots.length > 1;
 
 if (AS_JSON) {
-  console.log(JSON.stringify({ failures, warnings, triggers: triggers.length, neverSeen: neverSeen.length, crossProject: crossProject.length, promotions }, null, 2));
+  console.log(JSON.stringify({ failures, warnings, triggers: triggers.length, neverSeen: neverSeen.length, crossProject: crossProject.length, crossProjectReach: { rootsScanned: scannedRoots.length, reachable: promotionReachable }, canNotArrive: { total: inertTotal, of: entriesTotal, byScope: inertByScope }, promotions }, null, 2));
 } else {
   console.log(`pit liveness — ${rows.length} entr(ies), ${triggers.length} with a trigger`);
   for (const { scope, dir } of ledgers) console.log(`  ${scope.padEnd(7)} ${dir}`);
@@ -250,6 +298,9 @@ if (AS_JSON) {
   if (blindFiles.length > 0 && blindFiles.length <= 8) {
     for (const row of blindFiles) console.log(`  BLIND [${row.scope}] ${row.heading}`);
   }
+  console.log(
+    `entr(ies) with no arrival coordinate at all (neither \`trigger:\` nor \`files:\`): ${inertTotal}/${entriesTotal}${inertByScope.length === 0 ? '' : ` — ${inertByScope.map((entry) => `${entry.scope} ${entry.inert}/${entry.entries}`).join(', ')}`} — neither route can reach a reader at the moment one applies, so these only compete for briefing space`,
+  );
   if (promotions.length > 0) {
     console.log(
       `\n${promotions.length} rule(s) have fired in more than one *project* — a machine fact filed per project, which pays for it again in every one. Consider recording it with \`code_record(scope="global")\`; this is a prompt to look, not a defect:`,
@@ -257,8 +308,14 @@ if (AS_JSON) {
     for (const rule of promotions) {
       console.log(`  PROMOTE ${rule.heading} — ${rule.roots.length} project(s): ${rule.roots.join(', ')}`);
     }
+  } else if (!promotionReachable) {
+    console.log(
+      `\nno cross-project promotion candidates: **UNREACHABLE, not empty** — the scan can see ${scannedRoots.length} project(s) with a ledger, and a promotion needs a hit in two, so this filter cannot pass here. Nothing is wrong with any entry; it needs a second project with its own \`${DIRNAME}\`.`,
+    );
   } else {
-    console.log('\nno cross-project promotion candidates: no recorded trigger hit appears in two different projects');
+    console.log(
+      `\nno cross-project promotion candidates: 0 across the ${scannedRoots.length} ledged project(s) scanned — the condition **was** satisfiable and nothing met it.`,
+    );
   }
 }
 process.exitCode = failures.length === 0 ? 0 : 1;

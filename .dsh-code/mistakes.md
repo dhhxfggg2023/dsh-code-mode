@@ -476,3 +476,60 @@
 - trigger: git\s+(commit|merge|rebase|am|cherry-pick)\b
 - do not repeat: 在这个 host 上跑会写索引/临时文件的 git 命令前，先把 TEMP 与 TMP 钉到一个**真实存在且跨命令稳定**的目录；看到 "Unable to create .git/index.lock: Permission denied" 时不要去改 `.git` 的 ACL（那条 Everyone deny 是预期的），先检查 TEMP/TMP 指向的目录是否还存在
 
+## 2026-10-05 · 用-code_verify-cmd-node-probes-debt-audit.mjs-expect-re-d-d-验-qww52
+- symptom: 用 `code_verify(cmd="node probes/debt-audit.mjs", expect="re:(\\d+/\\d+)")` 验证时报告 `exit 0, but the expected output never appeared` + `expectation not matched · ok false`，看起来像探针失败；实际探针 23/23、`"failed": []`、exit 0，产品是绿的。同一次并行调用里 `node probes/utf8-check.mjs` 同形 expect 却匹配成功（因为它确实打印 `18/18 valid strict UTF-8`）。
+- cause: `probes/debt-audit.mjs` 的 stdout 是**纯 JSON**（`{"failed":[],"passed":23,"total":23,"checks":[...]}`），没有 `18/18` 那种人类摘要行；`re:(\d+/\d+)` 这类形状的 expect 对它永远不匹配。这是**判据形状**错，不是被测物错——与账本里那条「零输出 + $LASTEXITCODE 为空 = 进程没起来，不是判据红灯」是同一类误读的镜像：那次把"没起来"读成红灯，这次把"红的形状"读成红灯。
+- fix: 对 debt-audit 用 JSON 形状的 expect：`"failed": []`（字面子串即可），或 `re:"passed":\s*23`。已用 `expect="\"failed\": []"` 复跑确认 exit 0 且匹配。
+- files: probes/debt-audit.mjs
+- trigger: debt-audit\.mjs
+- do not repeat: 给某个探针写 code_verify 的 expect 之前，先确认它打印的是人类摘要行还是 JSON——本仓库两类都有（utf8-check 是 `N/N`，debt-audit 是 JSON）。判据形状不匹配会记成一次假失败，而假失败会污染 journal 里"这条命令失败过"的记录。
+
+## 2026-10-05 · 为摸清-journal-的事件词表-用-grep-工具在-.dsh-code-上跑了一个-9-选一的-kind-模式-结-d2hre
+- symptom: 为摸清 journal 的事件词表，用 grep 工具在 `.dsh-code` 上跑了一个 9 选一的 kind 模式，结果**一次调用就把整个上下文灌满**：250 条匹配、每条都是一个完整的长 JSON 对象（`cmd` 字段里带着整段多行 PowerShell），加上被省略的 37 KB，最后只落回一句「Full grep result stored at ...」。真正的收获（词表）本来只需要 3 行。
+- cause: journal 是 JSONL，**一行一个完整对象、且行很长**（`trigger_hit` 的 `cmd` 字段可以带整段多行脚本），而 `file_hit` 在同一秒里会对同一条坑重复落多条。于是"按 kind 过滤"这个看着很窄的模式，在真实数据上匹配到的几乎每一行，且每行都很长。这不是模式的错，是**把 grep 当成计数工具用**的错。
+- fix: 要词表就读文件头几行（`read` 带 limit，本会话一次就拿到了 `ts/session/kind` 的形状）；要计数就写脚本只输出计数与 `heading` 聚合，不要把匹配行打出来。
+- files: .dsh-code/journal.jsonl, .dsh-code/journal.jsonl.000, .dsh-code/journal.jsonl.001
+- do not repeat: 不要用 grep 在 `.dsh-code/journal.jsonl*` 上摸词表或做统计——那里的行很长且高度重复，一次模式就能吐回几十 KB。读形状用 `read` + limit（前 3 行足够）；要聚合就写脚本、只打印计数。
+
+## 2026-10-05 · node-probes-gate-chance.mjs-今天-2026-10-05-报-gate-mount-2026--y1uwa
+- symptom: `node probes/gate-chance.mjs` 今天（2026-10-05）报 `gate mount : 2026-10-02T14:49:00.000Z   warn 0.65 / ask 0.8`，并给出 verdict `NO CHANCE YET: no recorded session reached even the warn line after the gate was mounted`。但 `cordis.patch.yml` 实际声明的是 **warnRatio 0.6 / gateRatio 0.75**（该注释明确写了为什么把 0.8 降到 0.75：0.8 守在真实会话够不到的地方，"A guard placed above the ceiling of real work is not a guard"）。也就是说这个探针**报的是一个已经不存在的闸门**。
+- cause: `probes/gate-chance.mjs:36-37` 把阈值**硬编码**成 `const WARN = 0.65; const GATE = 0.8;`（第 13 行的注释也照着写），而不是读 `cordis.patch.yml` 的声明。这正是本项目已经修过一次的**同一个病**：`compact-gate-probe` 的 R1 原本是拿闸门的**库默认值**去比引擎的默认值——"同一个默认的两份拷贝互相作证"，于是闸门空转 30/30 全绿。现在换了个位置复发：探针拿库默认值去衡量**挂载值**。
+- fix: 未修（本轮只取证）。要修的是：`gate-chance.mjs` 从 `cordis.patch.yml` 读 `warnRatio`/`gateRatio`（或复用 `lib/compact-gate.js` 的 `resolveLimits`），并把读到的值与来源一起打印。
+- files: probes/gate-chance.mjs:13, probes/gate-chance.mjs:36, probes/gate-chance.mjs:37, probes/gate-chance.mjs:154
+- do not repeat: 不要让任何探针或报告**硬编码**一个由预设声明的阈值——阈值有两个来源（库默认 vs 预设声明），硬编码必然取错其中一个。**并且注意这次错的偏向是要命的那一侧**：真实 warn 线是 0.6，比硬编码的 0.65 **更低更宽松**，所以"挂载后 0 个会话达到 warn 线"这个结论**可能是错的**——0.6~0.65 之间的会话会被漏掉。一个偏严的阈值会把"已经发生过"报成"从未发生"，而这个项目有多条机制的判据正是"从未发生过"。
+
+## 2026-10-05 · 两次-code_verify-报-exit-0-but-the-expected-output-never-appear-zasr6
+- symptom: 两次 `code_verify` 报 `exit 0, but the expected output never appeared` / `expectation not matched · ok false`，而命令本身完全成功、输出就在眼前：① `node probes/gate-chance.mjs` 配 `expect="re:[0-9]"`（输出里满是数字：103、0.65、1,000,000、79.86%）；② `node probes/debt-audit.mjs` 配 `expect="re:(\d+/\d+)"`（它输出纯 JSON，没有 N/N 行）。两次都**不是**被测物失败，只有一次（②）是 expect 形状选错。
+- cause: **②的原因已确定**：debt-audit 打印纯 JSON，没有 `N/N` 摘要行，expect 形状与产物形状不匹配。**①的原因未确定，我不写没建立的因果**：`[0-9]` 这个字符类本身是有效的——随后 `Write-Output 'abc123'` 配同一个 `expect="re:[0-9]"` 返回 `expectation matched · ok true`。两次唯一的差别是 **gate-chance 的输出很长（约 4.9 KB 被省略）**。合理猜测是匹配发生在被截断后的文本上，但我没有证据，**所以只记观察不记因果**。两次真正的代价是同一个：把"判据形状不对"读成了"命令失败"，从而在 journal 里留下两条假失败。
+- fix: 用**字面量**而不是正则，并且选一个**确认出现在输出里**的串：改用 `expect="verdict: NO CHANCE YET"` 后同一命令立即 `VERIFIED`。对长输出，优先挑接近结尾的字面量。
+- files: probes/gate-chance.mjs, probes/debt-audit.mjs
+- do not repeat: 写 expect 之前先问「这个串真的会在产物里出现吗」——本仓库两类产物都有（utf8-check 是 `N/N` 人类行，debt-audit 是 JSON，gate-chance 是长报告）。对输出很长的命令，用字面量子串而不是正则，并挑一个确信存在的串。当 expect 报不匹配而输出明明匹配时，**先怀疑 expect 的形状，再怀疑命令**——不要让它变成 journal 里的一条假失败。
+
+## 2026-10-05 · node-probes-syntax-check.mjs-2-1-select-string--pattern-gate-nok4s
+- symptom: `node probes/syntax-check.mjs 2>&1 | Select-String -Pattern 'gate-chance|valid|total' | Select-Object -First 5` 返回 `[exit code: 1]` 并打印 `FAILED (exit 1)`，看起来像 syntax-check 红了。实际上我在同一条命令里还验证了别的东西，那些**全部通过**（plan 严格 UTF-8 OK、修正后的读数确实写进了文件），红的只有被我截断的那一段。
+- cause: **我踩了账本里已经记过的坑**（`2026-10-02 · python.exe ... Select-Object -First 80 返回 exit code 1`）：把**原生程序**的输出接进 `Select-Object -First N` 时，PowerShell 拿到 N 行就提前关闭管道，上游 node 进程被终止，于是返回非零退出码。那个 1 是**我造的**，不是探针的。另外这条探针本身还需要 `--experimental-vm-modules`，我连参数都没给——所以即便不截断也可能红，两个原因叠在一起。
+- fix: 要截断就不要在同一调用里判断退出码；要么别截断（重定向到文件再读），要么明知那个非零是截断产物。本次真正的结论不需要它：**`probes/gate-chance.mjs` 已经完整跑过一次并给出正确输出**，执行本身就证明了它能解析——比解析检查更强。
+- files: probes/syntax-check.mjs
+- do not repeat: `Select-Object -First N` 接在任何**原生程序**后面时，它的退出码不可信；不要把这种调用放进 `code_verify` 去证明什么。而这次更该记住的是：**这条坑已经在账本里了，trigger 也命中了，我还是踩了**——trigger 会提示"你正要跑的命令撞上了一条坑"，但它不会阻止我，读那一行提示是唯一的机会。
+
+## 2026-10-05 · 为验证-能否从会话日志判断它是否跑-code-预设-我把两份日志-本项目一份---e-tools-dsh---一份-解压-4fhem
+- symptom: 为验证「能否从会话日志判断它是否跑 `code` 预设」，我把两份日志（本项目一份、`--E-tools-DSH--` 一份）解压后在**整份文本**里数 `## Project ledger` 的出现次数，得到 7 与 12 —— 于是判定 `verdict: NO DISCRIMINATION`。这个结论**无效**：它测的不是"这个会话有没有收到那段提示"，而是"这段文字在这份日志里出现过几次"。
+- cause: **我读了坑然后踩了它。** `probes/check-prompt-section.mjs:51-61` 的注释用一整段写了这件事：Until 2026-10-02 this searched the whole log, which can pass on an **echo** rather than on a request — 那段文本也会出现在**模型自己的回复**里、**工具调用参数**里、以及随用户消息重新注入的 system reminder 里；实测那天"最新的携带 `## Project ledger` 的帧是一条 assistant 消息，而一个 `write` 工具参数也匹配上了 needle"。正确做法写在同一个文件第 73 行：先 `frames.filter((frame) => frame.type === 'system/message')`，只在**真正发给模型的文本**里搜。我在同一次会话里刚读过这两处，转头就用了被明确否决的搜法。
+- fix: 未重跑（本轮只取证）。正确口径已存在且已在跑：只要把 `check-prompt-section.mjs` 的 system/message 过滤 + needle 搜索抽成能对**任意**日志运行的形式（它现在只读 `newestLog`），就能得到有效判据。
+- files: probes/check-prompt-section.mjs:51, probes/check-prompt-section.mjs:73, probes/unzstd.cjs
+- do not repeat: 在一个文件里读到"这个搜法会假阳性，正确做法是过滤 X"时，**不要**在别处用被否决的搜法去回答同一个问题——哪怕只是"快速验证一下"。附带一条实测：`probes/unzstd.cjs` 会把自己的进度（`frames N decoded N failed M bytes B`）**打到 stdout**，所以任何捕获它输出的脚本拿到的字符串会被污染（本次 `occurrences` 那行的值就是这样被拼坏的）；要拿干净结果得另想办法或解析掉那一行。
+
+## 2026-10-05 · e-tools-dsh-resources-app.asar-runtime-primary-runtime-depen-jam96
+- symptom: & 'E:\tools\DSH\resources\app.asar\runtime\primary-runtime\dependencies\node\bin\node.exe' 报 CommandNotFoundException；同一条命令里的 node -e 也被 PowerShell 吃掉引号（三条既有坑同时响）。
+- cause: 这个安装里 app.asar 是归档，`runtime\...\node.exe` 那条路径在磁盘上不存在（paths.mjs 里 NODE_EXE 只是给 asar 内部用的名义路径）；而 node -e 内联带引号脚本是账本里已记过四次的坑。
+- fix: 用 PATH 上的普通 node（v22.23.0，C:\Program Files\nodejs\node.exe，已确认有 zlib.zstdDecompressSync）；探针内一律用 process.execPath 起子进程，像 debt-audit.mjs:462 那样。诊断要写脚本就落文件再跑。
+- files: probes/paths.mjs:87, probes/debt-audit.mjs:462
+- do not repeat: do not引用 <install>\resources\app.asar\runtime\... 下的 node.exe 路径，也不要用 node -e 内联带引号的脚本；探针起子进程用 process.execPath。
+
+## 2026-10-05 · probes-effect-audit.mjs-reported-4-8-passed-failed-e1-e2-e3--wfteb
+- symptom: probes/effect-audit.mjs reported 4/8 passed, failed=[E1, E2, E3, E5]
+- cause: Two unrelated causes. (1) E1/E2/E3 were failing on fixture expectations that were mutually impossible, not on the probe: E2 required settled 4 + unresolved 1 + unproven 1 === debts 8 (6 !== 8) while also asserting verdicts_add_up === true, and E3 required none 5 + ran 2 + absent 2 === debts 8 (9 !== 8) — no fixture can satisfy either set. The fixture as written holds 7 debts (state none 3 / ran 3 / absent 1), which is what the code actually reported. E1 additionally compared the debt count against *every* line on disk while `ledger.initLedger` itself appends two journal lines of its own (`writeProject` writes kind:'project' at lib/ledger.js:1599, then initLedger writes kind:'init' at :1630) — so 7 raw lines vs 5 debts, with the reader having dropped nothing (rows === lines in every segment). (2) E5 was a real probe bug: `judgeable: read.length > 0` where `read` came from `journalFiles`, which synthesizes the live path when the ledger dir does not exist (lib/ledger.js:1030 `return [ledgerPath(cwd,'journal',scope)]` on failed readdirSync) — so an absent journal was reported as judgeable with a real 0, and `unjudgeable` was undefined (preview stringified it to the literal "undefined").
+- fix: effect-audit.mjs: judgeable now requires a segment whose bytes were actually read; E1 compares the debt count against the `unverified` lines counted off disk (kindLinesOnDisk) plus a pinned raw-line relation and a nothing-dropped equality; the main fixture was re-ordered and its proof cwds moved to a sibling dir so each documented settlement scenario really occurs, and its expectations were rebuilt as an explicit MAIN_EXPECTED block (7 debts, settled 5 / unresolved 1 / unproven 1, state none 2 / ran 4 / absent 1, 4 proofs out of 6 `verified` lines).
+- files: probes/effect-audit.mjs:214-266,probes/effect-audit.mjs:472-500,probes/effect-audit.mjs:539-655,lib/ledger.js:1030,lib/ledger.js:1599,lib/ledger.js:1630
+- do not repeat: Do not write a multi-clause fixture expectation by hand-counting debts: if the per-bucket numbers and the total disagree with each other (4+1+1 vs 8, 5+2+2 vs 8) the check is unsatisfiable and no fixture will fix it. Also: never treat "the reader was handed a path" as "the data exists" — a read that threw is the only evidence of absence.
+

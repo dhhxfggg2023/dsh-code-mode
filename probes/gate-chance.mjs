@@ -10,7 +10,9 @@
  *   - `contextWindow`, which the host records in every `request/context` frame;
  *   - the token count of each request, which decides occupancy against that window.
  *
- * The gate asks at `gateRatio` (0.8) and warns once at `warnRatio` (0.65) of that window.
+ * The gate asks at the preset's `gateRatio` and warns once at its `warnRatio` of that window.
+ * Both are read out of `cordis.patch.yml` at run time and never hardcoded here — see
+ * `declaredRatios`, which exists because they once were.
  * So: find every request at or above the warn line *after the gate was mounted*, and
  * report whether the gate left a trace. Zero traces above the warn line is a finding;
  * zero requests above the warn line means the gate was never given the chance.
@@ -22,6 +24,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
+import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
 const flag = (name) => {
@@ -33,8 +36,44 @@ const flag = (name) => {
 const MOUNT = Date.parse(flag('--mount') ?? '2026-10-02T14:49:00Z');
 /** Only requests at or after this instant count. Defaults to the mount. */
 const SINCE = Date.parse(flag('--since') ?? new Date(MOUNT).toISOString());
-const WARN = 0.65;
-const GATE = 0.8;
+/**
+ * The lines this probe measures against come from the preset, never from this file.
+ *
+ * They used to be two hardcoded constants (`WARN = 0.65`, `GATE = 0.8`), and that is the
+ * same defect this project already fixed once in `compact-gate-probe` R1: two copies of one
+ * number agreeing with each other while the feature ran on neither. Measured 2026-10-05 —
+ * the preset declares 0.6/0.75 (lowered on 2026-10-03 *because* 0.8 sits above the ceiling
+ * real sessions reach), while this probe still printed `warn 0.65 / ask 0.8`. It was
+ * measuring a gate that no longer exists.
+ *
+ * The direction of that error is the dangerous one. A warn line *stricter* than the real one
+ * reports "no session ever reached the line" for sessions that did — and "it has never
+ * happened" is the verdict several mechanisms here rest on, so a probe that manufactures
+ * that verdict keeps a working feature looking dead. Read the declaration; print its source.
+ */
+function declaredRatios() {
+  const preset = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'cordis.patch.yml');
+  try {
+    const text = fs.readFileSync(preset, 'utf8');
+    const at = text.indexOf('id: code-compact-gate');
+    if (at === -1) return { warn: undefined, gate: undefined, source: `${preset} (no code-compact-gate row)` };
+    // The row runs until the next `- id:`; the gate's own config keys are flat and unquoted.
+    const tail = text.slice(at);
+    const end = tail.search(/\n\s*-\s+id:/);
+    const row = end === -1 ? tail : tail.slice(0, end);
+    const num = (key) => {
+      const found = row.match(new RegExp(`${key}:\\s*([0-9]*\\.?[0-9]+)`));
+      return found === null ? undefined : Number(found[1]);
+    };
+    return { warn: num('warnRatio'), gate: num('gateRatio'), source: preset };
+  } catch (error) {
+    return { warn: undefined, gate: undefined, source: `unreadable: ${error?.message ?? error}` };
+  }
+}
+const DECLARED = declaredRatios();
+/** The library's own fallbacks, and only fallbacks — never a stand-in for the declaration. */
+const WARN = Number.isFinite(DECLARED.warn) ? DECLARED.warn : 0.65;
+const GATE = Number.isFinite(DECLARED.gate) ? DECLARED.gate : 0.8;
 
 const STORE = path.join(process.env.USERPROFILE ?? '', '.dsh', 'sessions');
 const MAGIC = Buffer.from([0x28, 0xb5, 0x2f, 0xfd]);
@@ -131,6 +170,7 @@ usable.sort((a, b) => b.ratio - a.ratio);
 
 console.log(`store      : ${STORE}`);
 console.log(`gate mount : ${new Date(MOUNT).toISOString()}   warn ${WARN} / ask ${GATE}`);
+console.log(`thresholds : declared in ${DECLARED.source}`);
 console.log(`logs read  : ${rows.length} (${usable.length} with a resolved window)`);
 const windows = new Map();
 for (const row of usable) windows.set(row.window, (windows.get(row.window) ?? 0) + 1);
