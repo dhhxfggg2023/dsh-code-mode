@@ -199,6 +199,7 @@
 - fix: 不重试内联写法：把要跑的检查落成项目内的探针文件（`probes/gate-chance.mjs`），用 `node probes/gate-chance.mjs` 调用。
 - trigger: node\s+(-e|--eval)|python\s+-c
 - do not repeat: 任何带引号的脚本（node -e / python -c / cmd /c 内联）一律先落文件再执行；写命令前先查 `files:`/`trigger:` 命中的坑，别等失败后再认。
+- 安全情形（2026-10-05 实测补记，不改 trigger 的理由写在下面）：**单引号包脚本、且脚本内无引号**（如 `node -e 'const x=1;console.log(x)'`）在这台机器上实测能跑通；本 trigger 仍然会命中它。原因是"命令里有没有引号"与正则可达的字符**不是同一个东西**：`node -e "…\"…\"…"` 就是一次"有引号的检测"看不到引号，收紧到能表达该前提的写法会漏掉它。所以这里选择**不改 trigger**（宁可多响一次），改的是这条 do not repeat：命中时先看**脚本里有没有引号**，没有就走安全情形，不必重推理一遍。
 
 ## 2026-10-03 · 把-node--e-json.parse-l.includes-id-code-整段作为参数传给原生-node-时报-s
 - symptom: 把 `node -e "…JSON.parse…l.includes('\"id\":\"code\"')…"` 整段作为参数传给原生 node 时报 `SyntaxError: missing ) after argument list`，而且报错位置把命令截断成 `(Get-Item $p).Length/102`——报错里出现的命令行跟实际写的不是同一条。
