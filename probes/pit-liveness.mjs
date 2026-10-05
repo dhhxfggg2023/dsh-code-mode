@@ -37,7 +37,7 @@ import path from 'node:path';
 // throws `ERR_UNSUPPORTED_ESM_URL_SCHEME` (only file:/data:/node: URLs are allowed, so a
 // raw path needs `pathToFileURL`). `lib/ledger.js` has no bare imports, so plain Node
 // resolves it directly and none of that is needed.
-import { DIRNAME, crossProjectTriggers, readJournalText, siblingProjects } from '../lib/ledger.js';
+import { DIRNAME, crossProjectTriggers, fileHitCounts, siblingProjects, triggerHitCounts } from '../lib/ledger.js';
 
 const args = process.argv.slice(2);
 const AS_JSON = args.includes('--json');
@@ -179,26 +179,11 @@ for (const { scope, dir } of ledgers) {
  * when it announces an entry, and the file side records `file_hit`; this reads those, so
  * the statistic and the feature finally agree.
  */
-const triggerHits = new Map();
-const fileHits = new Map();
-{
-  const journal = readJournalText(project, 'project');
-  for (const line of journal.split('\n')) {
-    if (!line.includes('_hit')) continue;
-    let entry;
-    try {
-      entry = JSON.parse(line);
-    } catch {
-      continue;
-    }
-    if (typeof entry.heading !== 'string') continue;
-    if (entry.kind === 'trigger_hit') triggerHits.set(entry.heading, (triggerHits.get(entry.heading) ?? 0) + 1);
-    else if (entry.kind === 'file_hit') fileHits.set(entry.heading, (fileHits.get(entry.heading) ?? 0) + 1);
-  }
-  for (const row of rows) {
-    if (row.trigger !== undefined) row.everSeen = triggerHits.get(row.heading) ?? 0;
-    if (row.files !== undefined) row.filesSeen = fileHits.get(row.heading) ?? 0;
-  }
+const triggerHits = triggerHitCounts(project, 'project');
+const fileHits = fileHitCounts(project, 'project');
+for (const row of rows) {
+  if (row.trigger !== undefined) row.everSeen = triggerHits.get(row.heading) ?? 0;
+  if (row.files !== undefined) row.filesSeen = fileHits.get(row.heading) ?? 0;
 }
 
 const triggers = rows.filter((row) => row.trigger !== undefined);
