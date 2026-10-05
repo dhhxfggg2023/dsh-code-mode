@@ -77,6 +77,9 @@ function entriesOf(file, scope) {
     });
 }
 
+/** The dated heading reduced to the entry's identity, so events survive a merge. */
+const keyOf = (heading) => ledger.headingKey(heading);
+
 /** The age a heading carries (`## 2026-10-05 · slug`), in days. */
 function headingAge(heading, now) {
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(heading);
@@ -86,13 +89,41 @@ function headingAge(heading, now) {
 }
 
 /** Everything the report needs, from the ledger's own readers, one journal read per scope. */
-function buildReport(cwd, now, scopes = ['project', 'global']) {
+export function buildReport(cwd, now, scopes = ['project', 'global']) {
   const rows = [];
   const collisions = [];
+  /**
+   * Event counts are keyed by entry identity, and an entry's scope is a property of where it
+   * is *filed*, not of where the event was written: `pit-guard` records every hit in the
+   * project journal, naming the ledger the entry came from in `source`. So a reader that looks
+   * up project-scope events against project-scope entries alone "loses" every machine entry —
+   * measured 2026-10-05, when this report called 29 machine entries (28% of all hit events)
+   * orphans and reported 96 of 169 collision groups as naming headings that do not exist. They
+   * exist; they are in the other file. Blend the maps, and keep the true orphans visible as
+   * their own alarm: an event whose entry is in neither ledger is real drift.
+   */
+  const counts = new Map();
+  const collisionKeys = new Map();
   for (const scope of scopes) {
     const events = ledger.pitEvents(cwd, scope);
+    for (const [k, v] of events.byHeading) {
+      const found = counts.get(k) ?? { triggerHits: 0, fileHits: 0, blocks: 0 };
+      found.triggerHits += v.triggerHits;
+      found.fileHits += v.fileHits;
+      found.blocks += v.blocks;
+      counts.set(k, found);
+    }
+    for (const c of events.collisions) collisionKeys.set(`${c.session}|${c.at}`, { ...c, scope });
+  }
+  collisions.push(...collisionKeys.values());
+  const known = new Set();
+  const homeOf = new Map();
+  for (const scope of scopes) {
     for (const entry of entriesOf(ledger.ledgerPath(cwd, 'mistakes', scope), scope)) {
-      const counts = events.byHeading.get(entry.heading) ?? { triggerHits: 0, fileHits: 0, blocks: 0 };
+      const id = ledger.headingKey(entry.heading);
+      known.add(id);
+      if (!homeOf.has(id)) homeOf.set(id, scope);
+      const c = counts.get(id) ?? { triggerHits: 0, fileHits: 0, blocks: 0 };
       rows.push({
         scope,
         heading: entry.heading,
@@ -100,20 +131,34 @@ function buildReport(cwd, now, scopes = ['project', 'global']) {
         files: entry.files,
         inert: entry.inert,
         ageDays: headingAge(entry.heading, now),
-        triggerHits: counts.triggerHits,
-        fileHits: counts.fileHits,
-        blocks: counts.blocks,
+        triggerHits: c.triggerHits,
+        fileHits: c.fileHits,
+        blocks: c.blocks,
         judged: entry.judged,
       });
     }
-    collisions.push(...events.collisions.map((c) => ({ ...c, scope })));
   }
+  // A collision's own `scope` is the journal it was found in, and every read-side event is
+  // written to the project journal — so it can never say which FILE an entry lives in. That
+  // distinction is the whole point here: the same subject was filed six times in the machine
+  // ledger and once in the project one, and a reader sent to the wrong file edits nothing.
+  const candidates = ledger.mergeCandidates(collisions).map((pair) => ({
+    ...pair,
+    aScope: homeOf.get(pair.aKey),
+    bScope: homeOf.get(pair.bKey),
+    sameLedger: homeOf.get(pair.aKey) === homeOf.get(pair.bKey),
+  }));
+  const orphanEvents = [...counts.entries()]
+    .filter(([k, v]) => !known.has(k) && v.triggerHits + v.fileHits + v.blocks > 0)
+    .map(([id, v]) => ({ id, ...v }))
+    .sort((a, b) => b.triggerHits + b.fileHits + b.blocks - (a.triggerHits + a.fileHits + a.blocks));
   return {
     cwd,
     scopes,
     entries: rows.length,
     collisions,
-    mergeCandidates: ledger.mergeCandidates(collisions),
+    mergeCandidates: candidates,
+    orphanEvents,
     neverFired: rows.filter((r) => !r.inert && r.triggerHits === 0 && r.fileHits === 0),
     inert: rows.filter((r) => r.inert),
     blocks: rows.filter((r) => r.blocks > 0),
@@ -134,7 +179,10 @@ function render(report) {
   lines.push('');
   if (report.mergeCandidates.length === 0) lines.push('(none — nothing fires together with an overlapping heading)');
   for (const pair of report.mergeCandidates.slice(0, 15)) {
-    lines.push(`- overlap ${pair.overlap} on [${pair.shared.join(', ')}] — seen with \`${pair.commands[0]}\``);
+    const where = (scope) => (scope === 'global' ? 'machine' : 'project');
+    lines.push(
+      `- [${where(pair.aScope)}${pair.sameLedger ? '' : ' + ' + where(pair.bScope)}] overlap ${pair.overlap} on [${pair.shared.join(', ')}] — seen with \`${pair.commands[0]}\``,
+    );
     lines.push(`  - ${pair.a}`);
     lines.push(`  - ${pair.b}`);
   }
@@ -151,18 +199,25 @@ function render(report) {
   lines.push('');
   for (const r of report.neverFired.slice(0, 40)) {
     const coord = r.trigger !== undefined ? `trigger: ${r.trigger}` : `files: ${r.files.join(', ')}`;
-    lines.push(`- [${r.ageDays ?? '?'}d, ${r.scope}] ${r.heading} — ${coord}`);
+    lines.push(`- [${r.ageDays ?? '?'}d, ${r.scope}] ${keyOf(r.heading)} — ${coord}`);
   }
   lines.push('');
   lines.push(`## Cannot arrive at all (${report.inert.length}) — no \`trigger:\` and no \`files:\``);
   lines.push('');
-  for (const r of report.inert.slice(0, 40)) lines.push(`- [${r.ageDays ?? '?'}d, ${r.scope}] ${r.heading}`);
+  for (const r of report.inert.slice(0, 40)) lines.push(`- [${r.ageDays ?? '?'}d, ${r.scope}] ${keyOf(r.heading)}`);
   lines.push('');
   lines.push(`## Refusals issued (${report.blocks.length}) — of which ${report.unjudgedBlocks.length} nobody has judged`);
   lines.push('');
   if (report.blocks.length === 0) lines.push('(none — no `hard block:` entry has been hit to its threshold)');
   for (const r of report.blocks) {
-    lines.push(`- ${r.blocks} refusal(s) [${r.scope}] ${r.heading} — judged: ${r.judged ? 'yes' : '**no**'}`);
+    lines.push(`- ${r.blocks} refusal(s) [${r.scope}] ${keyOf(r.heading)} — judged: ${r.judged ? 'yes' : '**no**'}`);
+  }
+  lines.push('');
+  lines.push(`## Events with no entry (${report.orphanEvents.length}) — the journal names something neither ledger still holds`);
+  lines.push('');
+  if (report.orphanEvents.length === 0) lines.push('(none — every recorded hit belongs to an entry that exists)');
+  for (const o of report.orphanEvents.slice(0, 20)) {
+    lines.push(`- ${o.triggerHits + o.fileHits + o.blocks} event(s) (t${o.triggerHits}/f${o.fileHits}/b${o.blocks}): ${o.id.slice(0, 100)}`);
   }
   lines.push('');
   lines.push('To judge a refusal, add `- last block: <date> <verdict>` to that entry: `still blocked`');
@@ -219,7 +274,7 @@ async function selfTest() {
     hit('2026-10-05 · a-tracked-file-was-deleted-as-a-read-only-assertion');
     hit('2026-10-04 · a-tracked-file-deleted-while-asserting-read-only');
     hit('2026-10-04 · fired-alone');
-    ledger.journalEvent(cwd, { kind: 'file_hit', ts: action, session: 's1', root: cwd, heading: '2026-10-05 · fired-with-a-neighbour', target: 'a.js' }, 'project');
+    ledger.journalEvent(cwd, { kind: 'file_hit', ts: action, session: 's1', root: cwd, heading: '2026-10-05 · a-tracked-file-was-deleted-as-a-read-only-assertion', target: 'a.js' }, 'project');
     for (const heading of ['2026-10-05 · refused-unjudged', '2026-10-05 · refused-and-judged']) {
       ledger.journalEvent(cwd, { kind: 'trigger_block', ts: action, session: 's1', root: cwd, heading, source: 'x', cmd: 'run gamma', hits: 2, declared: 2 }, 'project');
     }
@@ -258,6 +313,35 @@ async function selfTest() {
     const again = buildReport(cwd, now);
     check('P9', 'reporting writes nothing to the ledger it reports on', fs.readFileSync(path.join(cwd, '.dsh-code', 'journal.jsonl'), 'utf8') === journalBefore && again.entries === report.entries, { entries: again.entries });
 
+    // The machine ledger holds an entry whose hits were written into the *project* journal —
+    // which is what `pit-guard` does, naming the entry's file in `source`. Before this was
+    // pinned, the report looked up project events against project entries only and called 29
+    // machine entries (~28% of all hits) orphans. The fix must be visible in both directions:
+    // the count reaches the machine row, and the orphan list stays for genuine drift.
+    // `DSH_CODE_GLOBAL_DIR` IS the ledger directory (`globalDir() + /mistakes.md`); adding a
+    // `.dsh-code` level under it makes the machine file invisible, which is how this fixture
+    // first made P12 red for the wrong reason.
+    fs.writeFileSync(
+      path.join(home, 'mistakes.md'),
+      fixture([{ heading: '2026-10-05 · a-tracked-file-deleted-while-asserting-read-only', trigger: 'alpha' }]),
+      'utf8',
+    );
+    const crossScope = buildReport(cwd, now);
+    const machineRow = crossScope.neverFired.concat(crossScope.blocks).find((r) => r.scope === 'global');
+    check(
+      'P12',
+      'a machine entry hit by a project-journal event is counted, not reported as an orphan',
+      crossScope.entries === FIXTURES.length + 1 &&
+        crossScope.orphanEvents.length === 0 &&
+        machineRow === undefined &&
+        !crossScope.neverFired.some((r) => r.scope === 'global'),
+      {
+        entries: crossScope.entries,
+        orphans: crossScope.orphanEvents.map((o) => o.id),
+        neverFiredGlobal: crossScope.neverFired.filter((r) => r.scope === 'global').length,
+      },
+    );
+
     // The control that makes P6 meaningful: the flag must be able to go the other way.
     // The verdict is added the way a human would add it — by editing the entry — and the
     // fixture builder is what shapes the entry, so the two cannot disagree (the first
@@ -288,7 +372,12 @@ async function selfTest() {
   process.exitCode = failed.length === 0 ? 0 : 1;
 }
 
-if (args.includes('--selftest') || args.length === 0) {
+// Only run the CLI when this file is the entry point: the self-test below imports `lib/`, and
+// a reader (or a debugging session) must be able to import `buildReport` without side effects.
+const isEntryPoint = process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (!isEntryPoint) {
+  /* imported: export only */
+} else if (args.includes('--selftest') || args.length === 0) {
   await selfTest();
 } else {
   const cwd = argOf('--cwd', process.cwd());

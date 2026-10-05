@@ -1,5 +1,4 @@
 # Mistakes
-
 ## 2026-10-02 · 三个文件-install.md-probes-readme.md-probes-build-preset.mjs-被写成
 - symptom: 三个文件（INSTALL.md、probes/README.md、probes/build-preset.mjs）被写成 29 KB / 10 KB / 21 KB 的十进制数字串，read 报「offset 8 is out of range (1 lines)」
 - cause: 在 Windows PowerShell 5.1 里用 `$utf8.GetBytes($text) | Set-Content -LiteralPath $f -Encoding utf8 -NoNewline` 回写文件：管道把 byte[] 交给 Set-Content 时，PS 5.1 先把数组 stringify 成「每个字节的十进制值直接拼接」（无分隔符）再按文本写入，另外还加了 BOM。数字串的字节边界因此不可恢复：我试过 3 位分组、最短解析、按 UTF-8 结构贪心三种还原方式，都产出乱码（含 11、27 这类控制字节），组合爆炸到 forensic 脚本 OOM。三份文件里 INSTALL.md 有 130 行、probes/README.md 65 行、build-preset.mjs 176 行，只有转录里的原文能救。
@@ -192,24 +191,6 @@
 - fix: 不重跑这条路：需要的 8 条文件名已经从输出里拿到，改用单点读取（`context-cost.mjs` 自己打印 session log 路径 + 单个文件的 grep）继续。
 - files: E:\projects\dsh-code-mode\.dsh-code\journal.jsonl
 - do not repeat: 用 `-Recurse` 扫一个可能含不可读子目录的目录树、同时用 `-ErrorAction SilentlyContinue` 抑制错误时，不要把退出码当失败；要么别递归（先定位再单点读），要么把一条必然成功的语句（如 `Write-Host 'ok'`）放在管道最后。
-
-## 2026-10-03 · node--e-...l.includes-id-code-...-报-syntaxerror-missing-afte
-- symptom: `node -e "...l.includes('\"id\":\"code\"')..."` 报 `SyntaxError: missing ) after argument list`，报错行里的引号已经被 PowerShell 吃掉（`presetHits.push(f.type);if(l.includes('" id\:\code\'))`）。
-- cause: PowerShell 把内联脚本里的引号当自己的解析对象，传给 node 的字符串已经变形。这条坑本机账本 2026-10-02 已经记过一次（powershell-native-argument-passing-eats-quotes-in-inline-scripts），我动手前没查就写了。
-- fix: 不重试内联写法：把要跑的检查落成项目内的探针文件（`probes/gate-chance.mjs`），用 `node probes/gate-chance.mjs` 调用。
-- trigger: node\s+(-e|--eval)|python\s+-c
-- hard block: 2
-- do not repeat: 任何带引号的脚本（node -e / python -c / cmd /c 内联）一律先落文件再执行；写命令前先查 `files:`/`trigger:` 命中的坑，别等失败后再认。
-- 安全情形（2026-10-05 实测补记，不改 trigger 的理由写在下面）：**单引号包脚本、且脚本内无引号**（如 `node -e 'const x=1;console.log(x)'`）在这台机器上实测能跑通；本 trigger 仍然会命中它。原因是"命令里有没有引号"与正则可达的字符**不是同一个东西**：`node -e "…\"…\"…"` 就是一次"有引号的检测"看不到引号，收紧到能表达该前提的写法会漏掉它。所以这里选择**不改 trigger**（宁可多响一次），改的是这条 do not repeat：命中时先看**脚本里有没有引号**，没有就走安全情形，不必重推理一遍。
-
-## 2026-10-03 · 把-node--e-json.parse-l.includes-id-code-整段作为参数传给原生-node-时报-s
-- symptom: 把 `node -e "…JSON.parse…l.includes('\"id\":\"code\"')…"` 整段作为参数传给原生 node 时报 `SyntaxError: missing ) after argument list`，而且报错位置把命令截断成 `(Get-Item $p).Length/102`——报错里出现的命令行跟实际写的不是同一条。
-- cause: 两层：① pit-guard 记录失败时 `cmd` 只取命令前 200 字符（pit-guard.js:343），所以长内联脚本的**真正失败点**经常不在记录里；② 主因是 PowerShell 把内联脚本文本里的引号/反斜杠当自己的解析对象，传给 node 的已是变形文本（本机账本 2026-10-02 已记过同类：powershell-native-argument-passing-eats-quotes-in-inline-scripts）。
-- fix: 不在命令行里传带引号的脚本：把检查落成文件（本次落成 `probes/gate-chance.mjs`）再 `node <file>` 调用。
-- files: E:\projects\dsh-code-mode\probes\gate-chance.mjs, E:\projects\dsh-code-mode\probes\session-evidence.mjs
-- trigger: node\s+-e\s|python\s+-c\s
-- hard block: 2
-- do not repeat: Windows 上一律不要把 JSON 字面量或含引号的脚本内联进 `node -e`/`python -c`/`cmd /c`；要写多行/带引号的脚本先落文件。另外：pit-guard 记的失败命令是前 200 字符的截断文本，别把「记录里的命令行」当成「实际执行过的命令行」的唯一来源。
 
 ## 2026-10-04 · get-childitem-e-tools-dsh-resources-app.asar-dsh-and-...-app
 - symptom: Get-ChildItem "E:\tools\DSH\resources\app.asar\dsh" (and ...\app.asar\dsh\node_modules\@deepseek-ai) → 找不到路径 ... 因为该路径不存在 ([exit code: 1])，但同一命令前半段（读 profile 的 cordis.patch.yml）输出完全正确。
@@ -603,3 +584,13 @@
 - trigger: code_brief.*topic
 - do not repeat: 写坑的标题就把读者会用的检索词放进去：`code_brief({topic})` 只匹配标题与被索引的坐标字段，**不搜正文**——正文里的关键词读者查不到。如果你和我一样以为"写清楚就行"，那这条就是反例。
 
+## 2026-10-03 · node--e-...l.includes-id-code-...-报-syntaxerror-missing-afte
+- symptom: 内联脚本被 PowerShell 吃掉引号，症状伪装成"脚本自己写错了"：① `node -e "...l.includes('\"id\":\"code\"')..."` 报 `SyntaxError: missing ) after argument list`，报错行里引号已经没了（`presetHits.push(f.type);if(l.includes('" id\:\code\'))`）；② 同类写法还会把报错位置截断成 `(Get-Item $p).Length/102`，于是**报错里出现的命令行与实际写的不是同一条**。
+- cause: PowerShell 把内联脚本文本里的引号/反斜杠当自己的解析对象，传给 node 的已是变形文本（机器账本 2026-10-02 记过同类 `powershell-native-argument-passing-eats-quotes-in-inline-scripts`）。另一层：pit-guard 记失败命令只取前 200 字符，长内联脚本的**真正失败点**常常不在记录里。
+- fix: 不重试内联写法：把要跑的检查落成项目内的探针文件（本次落成 `probes/gate-chance.mjs`），用 `node probes/gate-chance.mjs` 调用。
+- files: probes/gate-chance.mjs, probes/session-evidence.mjs
+- trigger: node\s+(-e|--eval)|python\s+-c
+- hard block: 2
+- do not repeat: Windows 上一律不要把 JSON 字面量或含引号的脚本内联进 `node -e`/`python -c`/`cmd /c`（`--eval` 同理）；要写多行/带引号的脚本先落文件。另外：pit-guard 记的失败命令是前 200 字符的截断文本，**别把"记录里的命令行"当成"实际执行过的命令行"的唯一来源**。
+- 安全情形（2026-10-05 实测补记，不改 trigger 的理由）：**单引号包脚本、且脚本内无引号**（如 `node -e 'const x=1;console.log(x)'`）在这台机器上实测能跑通；本 trigger 仍会命中它。原因是"命令里有没有引号"与正则可达的字符不是同一个东西：`node -e "…\"…\"…"` 就是一次"有引号的检测"看不到引号，收紧到能表达该前提的写法会漏掉它。所以这里选择**不改 trigger**（宁可多响一次），改的是这条规则。
+- merged: 2026-10-05 由 `probes/pit-report.mjs` 的合并建议并自同日第二条同症状条目；原文仍在 `journal.jsonl` 与本文件编辑前的备份里。
