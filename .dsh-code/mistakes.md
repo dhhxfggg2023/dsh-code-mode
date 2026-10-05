@@ -591,3 +591,10 @@
 - do not repeat: 别用"再跑一条命令看提示还在不在"来判断这类债务是否结清：那条提示看的是**当前回合**的失败集合，只有当回合还在失败时才会出现。要判断结清，看 `handover()` 的积压计数（`… N failing command(s)`）——它是从 journal 重算的。
 - files: lib/pit-guard.js:280, lib/ledger.js:2338
 
+## 2026-10-05 · l.brief-cwd-topic-node-env-temp-dsh-read-audit-命中并让简报从-2525--n848a
+- symptom: `L.brief(cwd, {topic:'node-env-temp-dsh-read-audit'})` 命中并让简报从 2525 字符涨到 3427（取回那条条目）；而 `topic:'TEMP 是每条命令一次'`（同一段落里的正文措辞）与无关对照 `'kubernetes helm chart'` 都**不命中**，简报停在 2525。
+- cause: `brief({topic})` 的匹配面是条目标题/坐标，不是条目正文；所以主题词必须出现在标题或 `files:`/`trigger:` 里才可达。
+- fix: 把读者可能用来检索的词写进标题（本条的标题里就有 "env TEMP"），或给它一个 `files:`/`trigger:` 坐标。
+- trigger: code_brief.*topic
+- do not repeat: 写坑的标题就把读者会用的检索词放进去：`code_brief({topic})` 只匹配标题与被索引的坐标字段，**不搜正文**——正文里的关键词读者查不到。如果你和我一样以为"写清楚就行"，那这条就是反例。
+
