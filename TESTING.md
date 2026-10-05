@@ -1,4 +1,4 @@
-# 怎么测这个模式
+﻿# 怎么测这个模式
 
 两类测试：**自动判据**（不用你动手，跑命令看结果）和**人工走查**（需要你在 GUI 里开新会话）。
 
@@ -44,7 +44,7 @@ $env:ELECTRON_RUN_AS_NODE='1'
 & '<install>\DeepSeek Harness.exe' --expose-internals "$P\budget-chain-probe.mjs"   # 期望 16/16
 & '<install>\DeepSeek Harness.exe' --expose-internals "$P\gate-probe.mjs"           # 期望 39/39
 & '<install>\DeepSeek Harness.exe' --expose-internals "$P\gate-journal-probe.mjs"   # 期望 7/7
-& '<install>\DeepSeek Harness.exe' --expose-internals "$P\pit-guard-probe.mjs"      # 期望 33/33
+& '<install>\DeepSeek Harness.exe' --expose-internals "$P\pit-guard-probe.mjs"      # 期望 34/34
 # pit-report 不需要 Electron：node probes/pit-report.mjs --selftest   # 期望 12/12
 & '<install>\DeepSeek Harness.exe' --expose-internals "$P\aegis-activation-probe.mjs" # 期望 5/5
 Remove-Item Env:ELECTRON_RUN_AS_NODE

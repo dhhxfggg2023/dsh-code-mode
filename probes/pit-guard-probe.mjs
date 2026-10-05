@@ -723,6 +723,39 @@ const HARD_TRIGGER = 'compose hardstop';
     emptyDecisions.every((d) => d?.kind === 'accept'),
     { kinds: emptyDecisions.map((d) => d?.kind) },
   );
+
+  // `- safe case:` is the answer to a side effect this guard produces on purpose: a trigger is a
+  // regex over command TEXT, so an entry written wider than its real failure mode keeps firing on
+  // honest work (three times in one session on 2026-10-05). Narrowing the trigger cannot express
+  // some of those preconditions — "does the command contain a quote" is exactly what a regex
+  // cannot see — so the entry carries the check instead, and this pins that it reaches the reader.
+  const safeDir = project('safe-case');
+  fileMistake(safeDir, {
+    symptom: 'a recorded trigger fired on a command that was in fact safe',
+    cause: 'the trigger matches command text, which cannot express the real precondition',
+    fix: 'let the entry name the safe case so the reader checks it in one step',
+    trigger: HARD_TRIGGER,
+    avoid: 'SAFE-CASE-RULE-MUST-REACH-THE-READER',
+    // The API key is camelCase; the ledger's field is `- safe case:`. A fixture that passes the
+    // ledger's spelling is silently dropped (measured: this check failing while the writer was
+    // correct), because the writer destructures its own names and ignores anything else.
+    safeCase: 'SAFE-CASE-TEXT: only when the upstream is a native program',
+  });
+  const safeCtx = makeCtx();
+  pit.apply(safeCtx, {});
+  const safeAgent = agentFor(safeDir, SESSION);
+  const safeFileLines = fs
+    .readFileSync(mistakesFile(safeDir), 'utf8')
+    .split('\n')
+    .filter((line) => line.startsWith('- '));
+  await preExecute(safeCtx, execFor(safeAgent, 'pwsh', { cmd: `${HARD_TRIGGER} -v` }));
+  const safeNotices = noticeTexts(await preStep(safeCtx, { agent: safeAgent, turn: 1, messages: [] }), 'code-pit-guard');
+  check(
+    'K10',
+    'an entry that names its safe case delivers that line in the notice, next to the rule',
+    safeNotices.length === 1 && safeNotices[0].includes('SAFE-CASE-TEXT') && safeNotices[0].includes('SAFE-CASE-RULE-MUST-REACH-THE-READER'),
+    { notices: safeNotices.length, fileLines: safeFileLines, text: (safeNotices[0] ?? '').slice(0, 300) },
+  );
 }
 
 // The override is a setting of this process, so it is put back the way it was found;
