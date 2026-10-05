@@ -533,3 +533,10 @@
 - files: probes/effect-audit.mjs:214-266,probes/effect-audit.mjs:472-500,probes/effect-audit.mjs:539-655,lib/ledger.js:1030,lib/ledger.js:1599,lib/ledger.js:1630
 - do not repeat: Do not write a multi-clause fixture expectation by hand-counting debts: if the per-bucket numbers and the total disagree with each other (4+1+1 vs 8, 5+2+2 vs 8) the check is unsatisfiable and no fixture will fix it. Also: never treat "the reader was handed a path" as "the data exists" — a read that threw is the only evidence of absence.
 
+## 2026-10-05 · 给-effect-audit-probe.mjs-加完-hitrates-之后-探针-一个字都不输出-debt-audi-4rtz6
+- symptom: 给 `effect-audit-probe.mjs` 加完 `hitRates` 之后，探针**一个字都不输出**，`debt-audit` 从 23/23 掉到 **19/23（failed_count=4）**。而我的第一次验证只报回一句 `report NOT written` + `verdict: SOMETHING BROKE` —— **没有原因**。
+- cause: **两个原因叠在一起，第二个是我自己造的。**<br>① 真 bug：我把 `const hitRates = {...}` 声明在 `const report` 之上（约 1170 行），而 `E4` 在**第 963 行**就读它 → `ReferenceError: Cannot access 'hitRates' before initialization`（暂时性死区）。这是**模块加载期**的异常，所以进程在任何输出之前就死了，报告也从未写出。<br>② **我的验证命令把这个错误扔掉了**：我写的过滤是 `Where-Object { $_ -match 'passed, failed|^FAIL ' }` —— 那正是**成功时 tidy、失败时致命**的过滤。它把唯一的错误原文滤掉了，于是我看到的是一个没有理由的红。
+- fix: 把 `hitRates` 的声明移到 `E4` **之前**（并在注释里写明为什么必须在那，以及第一版就是这么死的）；验证命令改成**失败时打印错误行**，重跑后一眼看到 `Cannot access 'hitRates' before initialization`，修完即 8/8 + 23/23。
+- files: probes/effect-audit-probe.mjs
+- do not repeat: ① 在顶层 `await` 的脚本里，**声明顺序就是契约**：一条更早运行的判据读到的 `const`，必须在更早的位置声明；`var` 会掩盖它，`const` 不会 —— 而这里是好事，因为它把错误当场喊出来了。<br>② **绝不要先过滤一条命令的输出再读它**。为"成功时整洁"写的那个过滤，正是"失败时看不见原因"的原因。要么不过滤，要么让过滤**在失败分支里把原文打出来**（这次改成 `if exit≠0` 时打印前 8 行就够）。<br>③ 顺带一条：`debt-audit` 的 19/23 是**下游症状**，不是四个独立缺陷 —— 一个探针崩掉会同时打红 R5 及与其相关的那几条。
+
