@@ -649,6 +649,27 @@ const HARD_TRIGGER = 'compose hardstop';
     { notices: secondNotices.length },
   );
 
+  // A refusal is the one read-side event that stops work, and until 2026-10-05 it left no
+  // trace at all — asking the ledger whether it had ever blocked anything was unanswerable.
+  // The trigger/file sides already wrote `trigger_hit`/`file_hit`; this is their sibling.
+  const blockEvents = journalLines(hardDir).filter((e) => e.kind === 'trigger_block');
+  check(
+    'K8',
+    'the refusal is recorded in the journal, with the entry, the declaration and the hit count',
+    blockEvents.length === 1 &&
+      blockEvents[0].heading === hardHeading &&
+      blockEvents[0].declared === 2 &&
+      blockEvents[0].hits === 2 &&
+      String(blockEvents[0].cmd).includes(HARD_TRIGGER),
+    { blocks: blockEvents.map((e) => ({ heading: e.heading, declared: e.declared, hits: e.hits, cmd: e.cmd })) },
+  );
+  check(
+    'K9',
+    'a refusal that never happened writes no `trigger_block` — the statistic can tell the two apart',
+    journalLines(softDir).filter((e) => e.kind === 'trigger_block').length === 0,
+    { blocks: journalLines(softDir).filter((e) => e.kind === 'trigger_block').length },
+  );
+
   const editDir = project('hard-edit');
   fileMistake(editDir, { ...hardFields, files: 'lib/ledger.js' });
   harden(editDir, 2);
