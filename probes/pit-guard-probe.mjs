@@ -756,6 +756,54 @@ const HARD_TRIGGER = 'compose hardstop';
     safeNotices.length === 1 && safeNotices[0].includes('SAFE-CASE-TEXT') && safeNotices[0].includes('SAFE-CASE-RULE-MUST-REACH-THE-READER'),
     { notices: safeNotices.length, fileLines: safeFileLines, text: (safeNotices[0] ?? '').slice(0, 300) },
   );
+
+  // One edit routinely matches several entries at once — fourteen on this package's own core
+  // files, where every rule about the engine names the engine. The rules must all arrive (they
+  // are the point) and the prose must not: this pins the cluster, its count, and that a single
+  // match still gets the full single notice rather than the compact form.
+  const clusterDir = project('cluster');
+  for (const tag of ['first', 'second', 'third']) {
+    fileMistake(clusterDir, {
+      symptom: `the ${tag} rule about this file, filed separately`,
+      cause: 'the rules accumulated one session at a time',
+      fix: 'read them together',
+      files: 'lib/ledger.js',
+      avoid: `CLUSTER-RULE-${tag.toUpperCase()}`,
+    });
+  }
+  const clusterCtx = makeCtx();
+  pit.apply(clusterCtx, {});
+  const clusterAgent = agentFor(clusterDir, SESSION);
+  await preExecute(clusterCtx, execFor(clusterAgent, 'edit', { file_path: path.join(clusterDir, 'lib', 'ledger.js') }));
+  const clusterNotices = noticeTexts(await preStep(clusterCtx, { agent: clusterAgent, turn: 1, messages: [] }), 'code-pit-guard');
+  check(
+    'K11',
+    'three entries on one file arrive as one clustered notice that keeps every rule and says how many',
+    clusterNotices.length === 1 &&
+      clusterNotices[0].includes('3 recorded pits at once') &&
+      ['FIRST', 'SECOND', 'THIRD'].every((tag) => clusterNotices[0].includes(`CLUSTER-RULE-${tag}`)),
+    { notices: clusterNotices.length, text: (clusterNotices[0] ?? '').slice(0, 400) },
+  );
+
+  const singleDir = project('cluster-single');
+  fileMistake(singleDir, {
+    symptom: 'the only rule about this file',
+    cause: 'nothing else names it',
+    fix: 'nothing',
+    files: 'lib/ledger.js',
+    avoid: 'SINGLE-RULE',
+  });
+  const singleCtx = makeCtx();
+  pit.apply(singleCtx, {});
+  const singleAgent = agentFor(singleDir, SESSION);
+  await preExecute(singleCtx, execFor(singleAgent, 'edit', { file_path: path.join(singleDir, 'lib', 'ledger.js') }));
+  const singleNotices = noticeTexts(await preStep(singleCtx, { agent: singleAgent, turn: 1, messages: [] }), 'code-pit-guard');
+  check(
+    'K12',
+    'a single match keeps the full notice — the cluster must not swallow the ordinary case',
+    singleNotices.length === 1 && singleNotices[0].includes('A ledger already paid for a pit') && singleNotices[0].includes('SINGLE-RULE') && singleNotices[0].includes('symptom it came from'),
+    { notices: singleNotices.length, text: (singleNotices[0] ?? '').slice(0, 240) },
+  );
 }
 
 // The override is a setting of this process, so it is put back the way it was found;
