@@ -198,6 +198,7 @@
 - cause: PowerShell 把内联脚本里的引号当自己的解析对象，传给 node 的字符串已经变形。这条坑本机账本 2026-10-02 已经记过一次（powershell-native-argument-passing-eats-quotes-in-inline-scripts），我动手前没查就写了。
 - fix: 不重试内联写法：把要跑的检查落成项目内的探针文件（`probes/gate-chance.mjs`），用 `node probes/gate-chance.mjs` 调用。
 - trigger: node\s+(-e|--eval)|python\s+-c
+- hard block: 2
 - do not repeat: 任何带引号的脚本（node -e / python -c / cmd /c 内联）一律先落文件再执行；写命令前先查 `files:`/`trigger:` 命中的坑，别等失败后再认。
 - 安全情形（2026-10-05 实测补记，不改 trigger 的理由写在下面）：**单引号包脚本、且脚本内无引号**（如 `node -e 'const x=1;console.log(x)'`）在这台机器上实测能跑通；本 trigger 仍然会命中它。原因是"命令里有没有引号"与正则可达的字符**不是同一个东西**：`node -e "…\"…\"…"` 就是一次"有引号的检测"看不到引号，收紧到能表达该前提的写法会漏掉它。所以这里选择**不改 trigger**（宁可多响一次），改的是这条 do not repeat：命中时先看**脚本里有没有引号**，没有就走安全情形，不必重推理一遍。
 
@@ -207,6 +208,7 @@
 - fix: 不在命令行里传带引号的脚本：把检查落成文件（本次落成 `probes/gate-chance.mjs`）再 `node <file>` 调用。
 - files: E:\projects\dsh-code-mode\probes\gate-chance.mjs, E:\projects\dsh-code-mode\probes\session-evidence.mjs
 - trigger: node\s+-e\s|python\s+-c\s
+- hard block: 2
 - do not repeat: Windows 上一律不要把 JSON 字面量或含引号的脚本内联进 `node -e`/`python -c`/`cmd /c`；要写多行/带引号的脚本先落文件。另外：pit-guard 记的失败命令是前 200 字符的截断文本，别把「记录里的命令行」当成「实际执行过的命令行」的唯一来源。
 
 ## 2026-10-04 · get-childitem-e-tools-dsh-resources-app.asar-dsh-and-...-app
@@ -236,6 +238,7 @@
 - fix: 把要跑的逻辑落成 .mjs 文件再用 `node <file>` 调用（本会话后来就是这么做的：probes/syntax-check.mjs、probes/utf8-check.mjs）。查文件存在性/可删性这类一次性问题，也走落文件。
 - files: E:\projects\dsh-code-mode\probes\syntax-check.mjs:1-16
 - trigger: node\s+-e\s|python\s+-c\s
+- hard block: 2
 - do not repeat: 不要用 `node -e` / `python -c` / `cmd /c` 内联带引号的脚本来做诊断或验证，哪怕它「只是一句话」——先落文件。判据是命令里有没有引号，不是你觉得这事有多小。
 
 ## 2026-10-04 · 在-probes-里创建了调试用划痕文件-probes-handover-debug-scratch.mjs-之后删不掉
@@ -576,6 +579,7 @@
 - fix: 确认三个文件仍在（`Test-Path` 全 True，`git status --porcelain` 只显示 `.dsh-code/mistakes.md`），没有实际损失。
 - files: lib/ledger.js, probes/compact-gate-probe.mjs, probes/pit-guard-probe.mjs
 - trigger: Remove-Item[^;]*-ErrorAction\s+SilentlyContinue
+- hard block: 2
 - do not repeat: 不要把删除跟踪文件当"只读断言"来构造证据——那会留下一条真的未验证债务，而且结果取决于管道截断这种偶然因素。要断言"只读"就用 `git status --porcelain` 或文件哈希；要删就先确认路径解析后的绝对路径正是想删的那个。
 
 ## 2026-10-05 · node-env-temp-dsh-read-audit.mjs-报-cannot-read-properties-of-39xyg

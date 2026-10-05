@@ -563,6 +563,147 @@ const OK_RESULT = { kind: 'result', isError: false, content: [{ type: 'text', te
   );
 }
 
+// --- K: `hard block:` — the one path in this file that refuses instead of advising
+//
+// Everything above proves the guard *tells*; this block proves the narrow exception it
+// grew on 2026-10-05, at the human's request, after the same class of failure had been
+// filed three days running (`node -e` was recorded 2026-10-02, 10-03 and 10-04, and was
+// about to be written again). The declaration is per entry and counts **hits**: the first
+// hit is announced and allowed, so the reader can still say "not the same case", and only
+// the Nth is refused. K2/K3 are a pair for that reason — a refusal that fired on the first
+// hit would be indistinguishable from a guard that had simply stopped allowing anything.
+//
+// These fixtures use a trigger of their own: reusing the T block's `docker compose down`
+// put them in the same bucket as those fixtures, so one command matched two entries and
+// every count here was off by one (measured — it is what K2 caught before this note existed).
+const HARD_TRIGGER = 'compose hardstop';
+{
+  /** Append a field to the ledger's last entry — the fixture side of `hard block:`. */
+  const harden = (dir, value) => {
+    const file = mistakesFile(dir);
+    const text = fs.readFileSync(file, 'utf8');
+    const at = text.lastIndexOf('\n## ');
+    if (at === -1) throw new Error('no entry to harden');
+    // `at` is the newline *before* `## `, so the heading's own line ends at the first
+    // newline after the marker — `at + 3`, not `at + 1`. With `at + 1` this inserted the
+    // field three characters into the heading and the fixture stopped parsing as an entry.
+    const lineEnd = text.indexOf('\n', at + 3);
+    fs.writeFileSync(file, `${text.slice(0, lineEnd)}\n- hard block: ${value}${text.slice(lineEnd)}`, 'utf8');
+  };
+  const KILL_SWITCH = 'DSH_CODE_PIT_HARD';
+  const hardFields = {
+    symptom: 'a tracked file was deleted as a "read-only assertion"',
+    cause: 'the deletion was inert only because a pipeline truncated before it ran',
+    fix: 'assert read-only with git status or a hash, never with Remove-Item',
+    avoid: 'HARD-RULE-NEVER-DELETE-A-TRACKED-FILE',
+  };
+
+  const softDir = project('soft');
+  fileMistake(softDir, { ...hardFields, trigger: HARD_TRIGGER });
+  const softCtx = makeCtx();
+  pit.apply(softCtx, {});
+  const softAgent = agentFor(softDir, SESSION);
+  const softDecisions = [];
+  for (let i = 0; i < 2; i += 1) {
+    softDecisions.push(await preExecute(softCtx, execFor(softAgent, 'pwsh', { cmd: `${HARD_TRIGGER} -v` })));
+  }
+  check(
+    'K1',
+    'an entry without the declaration never refuses, however often it is hit',
+    softDecisions.every((d) => d?.kind === 'accept'),
+    { kinds: softDecisions.map((d) => d?.kind), text: String(softDecisions[1]?.reason ?? '').slice(0, 200) },
+  );
+
+  const hardDir = project('hard');
+  const hardHeading = fileMistake(hardDir, { ...hardFields, trigger: HARD_TRIGGER });
+  harden(hardDir, 2);
+  const hardCtx = makeCtx();
+  pit.apply(hardCtx, {});
+  const hardAgent = agentFor(hardDir, SESSION);
+  const firstHit = await preExecute(hardCtx, execFor(hardAgent, 'pwsh', { cmd: `${HARD_TRIGGER} -v` }));
+  const firstNotices = noticeTexts(await preStep(hardCtx, { agent: hardAgent, turn: 1, messages: [] }), 'code-pit-guard');
+  check(
+    'K2',
+    'the first hit of a `hard block` entry is allowed and announced, not refused',
+    firstHit?.kind === 'accept' && firstNotices.length === 1 && firstNotices[0].includes(hardFields.avoid),
+    { kind: firstHit?.kind, notices: firstNotices.length, texts: firstNotices.map((t) => t.slice(0, 160)) },
+  );
+
+  const secondHit = await preExecute(hardCtx, execFor(hardAgent, 'pwsh', { cmd: `${HARD_TRIGGER} -v` }));
+  const secondNotices = noticeTexts(await preStep(hardCtx, { agent: hardAgent, turn: 1, messages: [] }), 'code-pit-guard');
+  check(
+    'K3',
+    'the second hit is refused inside the call, quoting the rule and naming the declaration',
+    secondHit?.kind === 'deny' &&
+      typeof secondHit.reason === 'string' &&
+      secondHit.reason.includes(hardFields.avoid) &&
+      secondHit.reason.includes('hard block: 2') &&
+      secondHit.reason.includes(hardHeading) &&
+      secondHit.reason.includes('hit 2'),
+    { kind: secondHit?.kind, reason: String(secondHit?.reason ?? '').slice(0, 400) },
+  );
+  check(
+    'K4',
+    'a refused hit is not also announced, so the rule arrives once and as a refusal',
+    secondNotices.length === 0,
+    { notices: secondNotices.length },
+  );
+
+  const editDir = project('hard-edit');
+  fileMistake(editDir, { ...hardFields, files: 'lib/ledger.js' });
+  harden(editDir, 2);
+  const editCtx = makeCtx();
+  pit.apply(editCtx, {});
+  const editAgent = agentFor(editDir, SESSION);
+  const editFirst = await preExecute(editCtx, execFor(editAgent, 'edit', { file_path: path.join(editDir, 'lib', 'ledger.js') }));
+  const editSecond = await preExecute(editCtx, execFor(editAgent, 'edit', { file_path: path.join(editDir, 'lib', 'ledger.js') }));
+  check(
+    'K5',
+    'the file side refuses too, not just the command side, and only on the second hit',
+    editFirst?.kind === 'accept' &&
+      editSecond?.kind === 'deny' &&
+      String(editSecond?.reason ?? '').includes('the file you are about to change'),
+    { first: editFirst?.kind, second: editSecond?.kind, reason: String(editSecond?.reason ?? '').slice(0, 240) },
+  );
+
+  const killDir = project('kill');
+  fileMistake(killDir, { ...hardFields, trigger: HARD_TRIGGER });
+  harden(killDir, 1);
+  const killBefore = process.env[KILL_SWITCH];
+  process.env[KILL_SWITCH] = '0';
+  const killCtx = makeCtx();
+  pit.apply(killCtx, {});
+  const killAgent = agentFor(killDir, SESSION);
+  const killDecisions = [];
+  for (let i = 0; i < 2; i += 1) {
+    killDecisions.push(await preExecute(killCtx, execFor(killAgent, 'pwsh', { cmd: `${HARD_TRIGGER} -v` })));
+  }
+  if (killBefore === undefined) delete process.env[KILL_SWITCH];
+  else process.env[KILL_SWITCH] = killBefore;
+  check(
+    'K6',
+    '`DSH_CODE_PIT_HARD=0` disables every hard block, including one declared at 1',
+    killDecisions.every((d) => d?.kind === 'accept'),
+    { kinds: killDecisions.map((d) => d?.kind) },
+  );
+  const emptyDir = project('bad-decl');
+  fileMistake(emptyDir, { ...hardFields, trigger: HARD_TRIGGER });
+  harden(emptyDir, '');
+  const emptyCtx = makeCtx();
+  pit.apply(emptyCtx, {});
+  const emptyAgent = agentFor(emptyDir, SESSION);
+  const emptyDecisions = [];
+  for (let i = 0; i < 3; i += 1) {
+    emptyDecisions.push(await preExecute(emptyCtx, execFor(emptyAgent, 'pwsh', { cmd: `${HARD_TRIGGER} -v` })));
+  }
+  check(
+    'K7',
+    'a declaration with no value refuses nothing — the fail-open direction this path must never break',
+    emptyDecisions.every((d) => d?.kind === 'accept'),
+    { kinds: emptyDecisions.map((d) => d?.kind) },
+  );
+}
+
 // The override is a setting of this process, so it is put back the way it was found;
 // the temp ledger itself goes away with the rest of the scratch directories.
 if (globalEnvBefore === undefined) delete process.env[GLOBAL_ENV];
