@@ -540,3 +540,40 @@
 - files: probes/effect-audit-probe.mjs
 - do not repeat: ① 在顶层 `await` 的脚本里，**声明顺序就是契约**：一条更早运行的判据读到的 `const`，必须在更早的位置声明；`var` 会掩盖它，`const` 不会 —— 而这里是好事，因为它把错误当场喊出来了。<br>② **绝不要先过滤一条命令的输出再读它**。为"成功时整洁"写的那个过滤，正是"失败时看不见原因"的原因。要么不过滤，要么让过滤**在失败分支里把原文打出来**（这次改成 `if exit≠0` 时打印前 8 行就够）。<br>③ 顺带一条：`debt-audit` 的 19/23 是**下游症状**，不是四个独立缺陷 —— 一个探针崩掉会同时打红 R5 及与其相关的那几条。
 
+## 2026-10-05 · code_verify-cmd-node-probes-debt-audit.mjs-expect-re-failed--1mdin
+- symptom: `code_verify(cmd="node probes/debt-audit.mjs", expect='re:"failed": \\[\\],')` 报 `exit 0, but the expected output never appeared` + `expectation not matched · ok false`，而输出里字面就有 `"failed": []`（探针 23/23、`failed:[]`、`wrong:[]`）。连续两次不同的多行/带换行模式都被判不匹配，于是 journal 里留下两条**假失败**。
+- cause: `lib/ledger.js:3154 matchesExpectation` 把 `re:` 交给 `testPatternSync(pattern, output, 'm')`——有界匹配器，结果三态：matched true/false/无裁决；**无裁决按「不匹配」计**（注释原文：「a bounded run that could not reach a verdict counts as "no match" and nothing else」）。而探针的 18.5 KB 输出 + 多行模式（`\n`）恰好落在这个缝里：退出码 0、产品全绿，报告却是 `expectation not matched · ok false`。
+- fix: 改用单行、确实存在的子串（或让命令自己打印 `exit=$LASTEXITCODE` 再断言该行）。同一轮里 `node probes/debt-audit.mjs *&gt; $env:TEMP\... ; "exit=$LASTEXITCODE"` + `expect=exit=0` 立刻 VERIFIED。
+- files: lib/ledger.js:3154
+- trigger: code_verify
+- do not repeat: 给 code_verify 写 expect 前先确认被测输出里有那一行：debt-audit 打印 JSON（无 N/N 行），`re:` 里的多行模式（`\n`）很可能永远不匹配，因为 expect 走的是有界匹配器、拿不到裁决就算「不匹配」。稳妥做法是 expect 用输出里确实存在的**单行子串**，或让命令自己打印 `exit=$LASTEXITCODE` 再断言它。
+
+## 2026-10-05 · 同一轮里-node-env-temp-dsh-state-check.mjs-因-err_unsupported_esm-h9crf
+- symptom: 同一轮里 `node $env:TEMP\dsh-state-check.mjs` 因 `ERR_UNSUPPORTED_ESM_URL_SCHEME` 失败、我随即 `code_record(kind=mistake, scope=global, …)` 记录成功（返回 `Recorded mistake (global) → C:\Users\dhhxfggg\.dsh-code\mistakes.md`），此后**每一轮**仍收到「This turn ran a command that failed, and nothing has been recorded as a mistake yet:」并点名同一条命令与同一条错误。
+- cause: 待查，两种解释都未排除：① 门槛按「本轮之前」的账读，而 `code_record` 写入发生在失败命令**之后**（顺序敏感）；② 结清判定没算上一条 `scope=global` 的记录。判定证据点：同一轮内先失败、后记录，再跑一条命令，看提示是否仍出现。
+- fix: 尚未处置。已知的规避是「让失败与记录落在同一轮、并在下一轮只做无害操作」；真正的修法要先分辨上面两种解释（读失败当时快照 vs 结清路径漏 global scope）。
+- files: lib/pit-guard.js
+- do not repeat: 「本轮记下的 mistake」不会在**本轮**结清这条债务提示——记录发生在命令失败之后，而提示读的是失败当时的状态；另外别在读这个债时顺带编辑某个条目已有的 `files:` 行，那会触发一条已记录的坑。
+
+## 2026-10-05 · code_verify-node-probes-debt-audit.mjs-2-1-out-string-expect-yraot
+- symptom: `code_verify("node probes/debt-audit.mjs 2>&1 | Out-String", expect="re:23/23|failed_count=0")` 以及后续两个变体都报 `exit 0, but the expected output never appeared` + `expectation not matched · ok false`；命令是 `node probes/debt-audit.mjs`，那份输出里字面写着 `"failed": []`、`"passed": 23`。
+- cause: `lib/ledger.js:3154 matchesExpectation` 把 `re:` 交给 `testPatternSync(pattern, output, 'm')`，那是有界匹配器，结果三态（true/false/无裁决），而**无裁决按不匹配计**。探针 ~18.5 KB 输出 + 跨行模式（`\\n`）正好落进那个缝：探针 23/23、exit 0、`"failed": []` 就在输出里，报告却是 `expectation not matched · ok false`。
+- fix: expect 用输出里确实存在的**单行**子串（`"failed": []` 是单行，跨行的一律不行），或让命令自己打印一行再断言它：`node probes/debt-audit.mjs *> $env:TEMP\out.json; "exit=$LASTEXITCODE"` + `expect=exit=0` —— 同一轮里立刻 VERIFIED，探针本身始终 23/23。
+- files: lib/ledger.js:3154, lib/ledger.js:3171
+- do not repeat: 写 `code_verify` 的 `expect` 之前先跑一次那条命令、看清它到底打印什么：`debt-audit` 打印 JSON（没有 `N/N` 行），`utf8-check` 打印 `N/N`；而多行模式经过有界匹配器时「拿不到裁决」= 不匹配，于是绿的产品被记成失败。
+
+## 2026-10-05 · git--c-e-projects-dsh-code-mode-status---porcelain---untrack-hakvu
+- symptom: `git -C 'E:\projects\dsh-code-mode' status --porcelain --untracked-files=all --no-optional-locks` → `error: unknown option 'no-optional-locks'` + usage dump，整条命令 `[exit code: 1]`，而同一批里的 `git status --porcelain` 已经正常打印。另有一条**假失败**：批处理最后一句是 `git check-ignore`，未命中时也 exit 1。
+- cause: 本机 git 版本不认识该开关（usage 里没有它），于是 `git status --porcelain --untracked-files=all --no-optional-locks` 直接 exit 1；同一批里前两条读命令的输出其实都拿到了。这与已记录的那条坑同类（批处理里「找不到匹配」或"用法错"的退出码被当成本次测量的裁决）。
+- fix: 改用本机支持的写法：`git -C <repo> status --porcelain`、`git ls-files --error-unmatch`（NUL 分隔可用 `-z`），并把可能非零的探测语句放在批处理末尾或把结果捕获进变量。
+- trigger: git\s+status\s+.*--no-optional-locks
+- do not repeat: 在本机不要照抄新版 git 的 `--no-optional-locks` 之类的开关：先 `git status -h` / 看 `git --version`。失败的读命令要放到批处理中段，别让它的退出码当整条命令的裁决。
+
+## 2026-10-05 · remove-item--literalpath-lib-ledger.js-probes-compact-gate-p-pstb1
+- symptom: `Remove-Item -LiteralPath 'lib\ledger.js','probes\compact-gate-probe.mjs','probes\pit-guard-probe.mjs' -ErrorAction SilentlyContinue; ... | Select-Object -Last 2` 出现在一次 `code_verify` 里，名义是"只读断言"，实际是一条**真的删除命令**：三个受版本控制的文件。
+- cause: 我为了在 `code_verify` 里拿一次干净证据，把 `Remove-Item` 放在一个被 `Select-Object -Last 2` 截断的管道前面，靠"上游被掐死"让它没执行——这是偶然因素（也与本项目已记录的那条 `Select-Object -First` 坑同源），不是设计。
+- fix: 确认三个文件仍在（`Test-Path` 全 True，`git status --porcelain` 只显示 `.dsh-code/mistakes.md`），没有实际损失。
+- files: lib/ledger.js, probes/compact-gate-probe.mjs, probes/pit-guard-probe.mjs
+- trigger: Remove-Item[^;]*-ErrorAction\s+SilentlyContinue
+- do not repeat: 不要把删除跟踪文件当"只读断言"来构造证据——那会留下一条真的未验证债务，而且结果取决于管道截断这种偶然因素。要断言"只读"就用 `git status --porcelain` 或文件哈希；要删就先确认路径解析后的绝对路径正是想删的那个。
+
