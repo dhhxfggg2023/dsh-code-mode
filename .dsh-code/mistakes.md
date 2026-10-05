@@ -609,3 +609,11 @@
 - files: lib/ledger.js, probes/pit-report.mjs
 - do not repeat: 写机器账本的 fixture 前先看 `globalDir()` 返回什么:`DSH_CODE_GLOBAL_DIR` 指向的**就是账本目录本身**,文件是 `<它>/mistakes.md`,**没有** `.dsh-code` 这一层(项目层才有)。依赖路径的判据要有一条"能看见机器条目"的正向断言,否则 fixture 永远读不到而判据照样绿/红得没有意义。
 
+## 2026-10-05 · 我清理仓库时删了-probes-budget-log.txt-probes-budget-report.json-pro-3van9
+- symptom: 我清理仓库时删了 `probes/budget-log.txt`、`probes/budget-report.json`、`probes/budget-report.md`,随后 `debt-audit` 从 23/23 掉到 19/23,红的正是 R1–R4(budget 报告一致性/新鲜度)。
+- cause: 我按"gitignore 排除 = 可删的残渣"处理,但成品的判据集里有一组(R1–R4)专门读那两份报告比对;而它们只在 `budget-probe` 跑过之后才存在。
+- fix: 删掉后在能写的通道重跑 `budget-probe`(`ELECTRON_RUN_AS_NODE=1` + Electron 二进制)把它们再生成一遍,`debt-audit` 即回到 23/23。
+- do not repeat: 清理"生成物"之前先看有没有判据在读它:`probes/budget-report.{json,md}` 是探针每次重新生成的,但 `debt-audit` 的 R1–R4 正是拿它们做新鲜度/一致性比对——删掉等于把四条判据弄红。判据读的东西不是"噪声",即使它是自动生成的。`.gitignore` 排除的文件仍可能被**判据**依赖("不跟踪"≠"不需要存在")。
+- files: probes/budget-report.json, probes/budget-report.md, probes/debt-audit.mjs
+- trigger: Remove-Item[^;]*(budget-report|budget-log)
+

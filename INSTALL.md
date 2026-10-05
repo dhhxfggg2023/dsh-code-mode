@@ -15,12 +15,13 @@ mode id = `code`，显示名「编程模式」由 preset 声明自带（内置 l
 | 记账 | `lib/tool-record.js` | 工具 `code_record`，`kind ∈ project｜progress｜decision｜mistake｜verified`；`status:"done"` 会检查本会话有无真实验证 |
 | 验证 | `lib/tool-verify.js` | 工具 `code_verify`：跑命令 + 断言期望输出 + 落 journal（期望未命中时即使 exit 0 也判失败） |
 | 门禁 | `lib/gate-verify.js` | 插件 `code-gate`：改了文件却一个命令没跑的轮 → 轮内提醒一次 + 落 `unverified` 债（可被之后跑通的 `code_verify` 结清） |
-| 坑门禁 | `lib/pit-guard.js` | 插件 `code-pit-guard`：动手前把账本里点到该**文件**（`files:`）或匹配该**命令**（`trigger:` 正则，动手前匹配 `pwsh`/`bash`/`shell`/`code_verify` 的命令行）的坑推给模型（同会话同条只推一次）；两个账本（项目 + 机器）都查；一轮里命令失败却没记坑 → 落 `mistake_unrecorded` 债，下次 `code_brief` 顶出，记一条 mistake 即结清 |
+| 坑门禁 | `lib/pit-guard.js` | 插件 `code-pit-guard`：动手前把账本里点到该**文件**（`files:`）或匹配该**命令**（`trigger:` 正则，动手前匹配 `pwsh`/`bash`/`shell`/`code_verify` 的命令行）的坑推给模型（同会话同条只推一次）；两个账本（项目 + 机器）都查；一轮里命令失败却没记坑 → 落 `mistake_unrecorded` 债，下次 `code_brief` 顶出，记一条 mistake 即结清。**唯一的例外**：条目写了 `- hard block: N` 时，第 N 次命中会**拒绝执行**（返回 `{kind:'deny', reason}`，写 `trigger_block` 到 journal）；`DSH_CODE_PIT_HARD=0` 关掉全部硬拦 |
 | 预算 | `lib/budget.js` | 插件 `code-budget`：事前拦「整文件读 >256KB」；事后裁超长结果为兜底 |
-| 压缩闸门 | `lib/compact-gate.js` | 插件 `code-compact-gate`，**挂在内置 `compaction` 组里、排在 `compaction-basic` 之前**（注册顺序决定 `agent/pre-step` waterfall 的先后，而内置引擎正是从这条事件自动压缩）：65% 推一次「该收尾了」的提醒（不拦）；到内置阈值（80%）这一步先扣住，弹卡问人「压缩 / 让我继续 / 写交接文档」。它自己不压缩——选「压缩」就是放行给下面的引擎照常压；问不到人、超时、没有应答方、答案看不懂，一律放行（fail-open）；「让我继续」按占用率 +5% 记账，涨过才再问 |
+| 压缩闸门 | `lib/compact-gate.js` | 插件 `code-compact-gate`，**挂在内置 `compaction` 组里、排在 `compaction-basic` 之前**（注册顺序决定 `agent/pre-step` waterfall 的先后，而内置引擎正是从这条事件自动压缩）：**60%**（`warnRatio`）推一次「该收尾了」的提醒（不拦）；到 **75%**（`gateRatio`）这一步先扣住，弹卡问人「压缩 / 让我继续 / 写交接文档」。它自己不压缩——选「压缩」就是放行给下面的引擎照常压；问不到人、超时、没有应答方、答案看不懂，一律放行（fail-open）；「让我继续」按占用率 +5% 记账，涨过才再问 |
 | 账本库 | `lib/ledger.js` | 纯函数库（无 loader 导出，**不能**作为 plugin 行注册）；同时拥有**项目**与**机器**两个 scope 的读写 |
 | 正则兜底 | `lib/pattern-matcher.js` | 纯函数库（无 loader 导出，**不能**作为 plugin 行注册）：在可复用的 worker 线程里跑一个 `trigger:` 并在 250 ms 后放弃。记录的正则是一种可以从账本文件进来的数据，而 JS 没有正则超时，所以约束来自「这个模块能终止的那个线程」；超时算**不匹配**，绝不挂住 `pre-execute` |
 | 判据 | `probes/` | 验证工具集，见 `probes/README.md` |
+| 能力总览 | `OVERVIEW.md` | 给使用者看的一份「它会做什么」总览：十个能力、两层账本的分法、以及边界（哪些是声称、哪些是实测） |
 | 实战教训 | `LESSONS.md` | 这个模式自己踩出来的五个真缺陷与四条流程教训 |
 
 项目账本落在**项目内** `.dsh-code/`：`project.json`、`tasks.json`、`decisions.md`、`mistakes.md`、`journal.jsonl`。
