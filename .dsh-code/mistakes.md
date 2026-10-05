@@ -577,3 +577,17 @@
 - trigger: Remove-Item[^;]*-ErrorAction\s+SilentlyContinue
 - do not repeat: 不要把删除跟踪文件当"只读断言"来构造证据——那会留下一条真的未验证债务，而且结果取决于管道截断这种偶然因素。要断言"只读"就用 `git status --porcelain` 或文件哈希；要删就先确认路径解析后的绝对路径正是想删的那个。
 
+## 2026-10-05 · node-env-temp-dsh-read-audit.mjs-报-cannot-read-properties-of-39xyg
+- symptom: ① `node "$env:TEMP\dsh-read-audit.mjs"` 报 `Cannot read properties of undefined (reading 'length')` —— 因为上一条命令写进 `$env:TEMP` 的 `da-final.json` 在**下一条命令里已经不存在**（每条命令一个一次性 TEMP）；更早一次 `*>` 重定向还写出 UTF-16LE，`require()` 直接 `Unexpected token`。② PowerShell 里写 `<<'MSG'` heredoc 报 `MissingFileSpecification`，整条命令连 `node` 那半都没跑。
+- cause: `code_verify`/pwsh 两条通道各自给每条命令一个一次性 TEMP 目录；文件在命令结束时消失，于是"下一条命令读上一条写的文件"必然读不到，看起来像脚本写错。
+- fix: 把测量与读取放同一条命令（如 `$json = node probe ... | Out-String; $o = $json | ConvertFrom-Json; ...`），或用 `-F <讯息文件>` 且讯息文件用 write 工具生成。
+- do not repeat: 本机两条通道的 TEMP 是**每条命令一次**（命令结束即清空/换目录）：不要写「这条命令落文件、下一条命令读」的验证；要读就同一条命令里读完，或改用 `probes/` 下（能写的通道）或工作区里受版本控制的报告文件。另外 PowerShell 没有 heredoc，多行提交讯息一律落文件再 `-F`。
+- trigger: *>\s*\$env:TEMP|<<'
+
+## 2026-10-05 · 本会话开头我判定-提示在撒谎-dsh-state-check.mjs-失败并在同一回合记入-.dsh-code-mist-l5wud
+- symptom: 本会话开头我判定「提示在撒谎」：`dsh-state-check.mjs` 失败并在同一回合记入 `~/.dsh-code/mistakes.md` 之后，此后每一轮仍收到「This turn ran a command that failed, and nothing has been recorded as a mistake yet」。查证后**这个判断是错的** —— 提示并没有撒谎。
+- cause: `lib/pit-guard.js:280` 的提示在**每个回合**按当时的失败集合重算（`agent/pre-step`），不是从 `mistake_unrecorded` 债务表读的；`code_record` 的写入发生在同回合失败**之后**，所以那一回合的提示不会因此消失。真正的结清口径在 `unrecordedMistakes`（`lib/ledger.js:2338`），只对**已结束的回合**生效。
+- fix: 本轮实测确认：① 我的三条 `code_verify` 假失败确实在 journal 里是 `ok:false`，提示是对的；② 记下一条引用该命令的 mistake 之后，`handover()` 的积压计数 43 → 40（三条结清），证明结清路径工作正常。
+- do not repeat: 别用"再跑一条命令看提示还在不在"来判断这类债务是否结清：那条提示看的是**当前回合**的失败集合，只有当回合还在失败时才会出现。要判断结清，看 `handover()` 的积压计数（`… N failing command(s)`）——它是从 journal 重算的。
+- files: lib/pit-guard.js:280, lib/ledger.js:2338
+
