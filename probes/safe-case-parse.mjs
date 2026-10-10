@@ -26,6 +26,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { entryField, FIELD_SPELLINGS } from '../lib/entry-fields.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, '..');
@@ -50,31 +51,17 @@ const files = [
  * the gate ratios while `cordis.patch.yml` declared different ones — the plan calls it out in
  * §9, and this is the second occurrence.)
  */
-function guardFieldExpression(file = path.join(repo, 'lib', 'pit-guard.js')) {
-  const source = fs.readFileSync(file, 'utf8');
-  // `const match = new RegExp(\`...\`, 'm').exec(block);` — capture the template literal.
-  const found = /const match = new RegExp\(`([^`]+)`,\s*'m'\)/.exec(source);
-  if (found === null) throw new Error(`no field() expression found in ${file} — the probe cannot measure what it cannot read`);
-  return found[1];
-}
-
-const guardExpression = guardFieldExpression();
-/** Apply the guard's own expression with the labels it is asked for at each call site. */
-const guardField = (labels) => {
-  const tried = String(labels).split('/').map((label) => {
-    const pattern = guardExpression.replaceAll('${label}', label);
-    return { label, re: new RegExp(pattern, 'm') };
-  });
-  return (block) => {
-    for (const { re } of tried) {
-      const match = re.exec(block);
-      if (match !== null && match[1].trim().length > 0) return match[1].trim();
-    }
-    return undefined;
-  };
-};
-
-const readSafeCase = guardField('safe case/安全情形');
+/**
+ * The reader under test: **imported**, not lifted.
+ *
+ * This probe used to pull the guard's `new RegExp(...)` out of `lib/pit-guard.js` by text and
+ * rebuild it — a restatement, and restatements cannot report that the thing they restate changed.
+ * On 2026-10-10 it announced "the guard can read **0 of 4** real safe cases" while the guard read
+ * every one of them (`pit-guard-probe` K10 drives the real module and stayed green), and the file
+ * said so in its own reading notes one line above the alarm. The expression now lives in
+ * `lib/entry-fields.js`; this calls it, so the two cannot disagree.
+ */
+const readSafeCase = (block) => entryField(block, FIELD_SPELLINGS.safeCase.join('/'));
 
 /** Candidate label spellings: what the ledgers contain, and what the guard asks for. */
 const shapes = [
@@ -103,11 +90,11 @@ for (const { label, file } of files) {
     if (captured !== undefined) out.push(`             → ${captured.slice(0, 90)}`);
   }
 
-  // The guard's own expression against each spelling a ledger might use.
+  // The reader under test against each spelling a ledger might use — the same function the
+  // guard calls, so a spelling the guard accepts cannot be reported as unreadable here.
   for (const shape of shapes) {
     const probe = `- ${shape.labels.split('/')[0]}: A BODY A HUMAN WOULD NEED TO READ`;
-    const reader = guardField(shape.labels);
-    const captured = reader(probe);
+    const captured = entryField(probe, shape.labels);
     out.push(`- ${captured === undefined ? 'no match  ' : 'MATCH     '} ${shape.name}`);
   }
 
@@ -121,9 +108,9 @@ for (const { label, file } of files) {
 
 out.push('');
 out.push('## reading');
-out.push(`- the expression under test is lifted from \`lib/pit-guard.js\`: \`${guardExpression}\``);
+out.push(`- the reader under test is \`entryField()\` in \`lib/entry-fields.js\` — imported, not lifted, and the same function \`lib/pit-guard.js\` calls`);
 out.push('- a line is `PARSES` when the guard\'s own reader returns a value for it. `IGNORED` means the safe case is written down for humans and never reaches a notice.');
-out.push('- this probe carried its own copy of the expression in its first version, so it kept reporting `IGNORED` after the parser was widened. A reader that restates the rule it checks cannot report that the rule changed.');
+out.push('- this probe first carried its own copy of the expression, then lifted the expression out of `lib/pit-guard.js` by text, and both were restatements: on 2026-10-10 it reported "0 of 4" while the guard read all four. It now calls the shared reader, so the two cannot disagree.');
 out.push('- the range of accepted spellings: ASCII colon, full-width colon `：`, an optional parenthetical aside `（…）`, and the Chinese label 安全情形. Anything else is still ignored, and the count above is how a reader finds out.');
 
 console.log(out.join('\n'));
