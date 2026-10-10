@@ -34,7 +34,11 @@ const entries = (file) => {
   }
 };
 
-const field = (block, label) => new RegExp(`^- ${label}: (.*)$`, 'm').exec(block)?.[1]?.trim();
+// The guard's own reader, for the same reason `pit-liveness` uses it: this census counts what a
+// reader can actually see, and the narrow `- label: (.*)` shape it used to restate accepted
+// fewer spellings than the guard does.
+const { entryField } = await import('../lib/entry-fields.js');
+const field = (block, label) => entryField(block, label);
 
 function census(label, dir) {
   const mistakes = entries(path.join(dir, 'mistakes.md'));

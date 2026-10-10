@@ -85,7 +85,12 @@ const ledgers = [
   { scope: 'global', dir: globalDir() },
 ];
 
-const field = (block, label) => new RegExp(`^- ${label}: (.*)$`, 'm').exec(block)?.[1]?.trim();
+// The guard's own reader, so a field this report calls unreadable is unreadable to the guard
+// too. This file used to restate the narrow `- label: (.*)` shape, which accepted fewer
+// spellings than the guard does (full-width colon, a parenthetical aside, 安全情形) — the same
+// restatement that made `safe-case-parse` report "0 of 4" while the guard read all four.
+const { entryField } = await import('../lib/entry-fields.js');
+const field = (block, label) => entryField(block, label);
 const heading = (block) => block.split('\n', 1)[0].replace(/^##\s*/, '').trim();
 
 /** Entries of one markdown ledger file. */
