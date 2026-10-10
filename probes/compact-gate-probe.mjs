@@ -215,9 +215,9 @@ function mount(config, options) {
     'pure',
     'the card carries the numbers and exactly the three options, in order',
     question.options.length === 3 &&
-      question.options[0].label === 'Compact now' &&
-      question.options[1].label === 'Let me continue' &&
-      question.options[2].label === 'Write the handover' &&
+      question.options[0].label === '现在压缩' &&
+      question.options[1].label === '让我继续' &&
+      question.options[2].label === '写交接' &&
       question.question.includes('80%') &&
       question.question.includes('80,000'),
     { header: question.header, question: question.question, options: question.options.map((o) => o.label) },

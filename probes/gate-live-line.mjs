@@ -280,7 +280,7 @@ check(
   atCtx.asked.length === 1 &&
     atStep.kind === 'enter' &&
     questionText.includes('648,464') &&
-    questionText.includes('of 1,000,000 tokens') &&
+    questionText.includes('1,000,000') &&
     questionText.includes(policy.percent(ASK_RATIO)) &&
     !questionText.includes('75%'),
   {
@@ -296,7 +296,7 @@ check(
   'L4',
   'the card offers the three options in the contract order (the answer is read back by index)',
   Array.isArray(question?.options) &&
-    question.options.map((option) => option.label).join('|') === 'Compact now|Let me continue|Write the handover',
+    question.options.map((option) => option.label).join('|') === '现在压缩|让我继续|写交接',
   { options: question?.options?.map((option) => option.label) ?? null },
 );
 
