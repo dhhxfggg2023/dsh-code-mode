@@ -13,9 +13,14 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+// The census counts entries in *the* ledgers, so it asks where they are instead of assuming:
+// `<repo>/.dsh-code` is empty for a migrated project and `~/.dsh-code` was retired on
+// 2026-10-10, and this instrument reported 0 entries in both scopes while saying nothing
+// about the directories it had actually read.
+import { globalDir, ledgerDir } from '../lib/ledger.js';
 
-const GLOBAL_DIR = process.env.DSH_CODE_GLOBAL_DIR ?? path.join(os.homedir(), '.dsh-code');
-const PROJECT_DIR = path.join(process.cwd(), '.dsh-code');
+const GLOBAL_DIR = globalDir();
+const PROJECT_DIR = ledgerDir(process.cwd());
 
 const entries = (file) => {
   try {

@@ -60,9 +60,13 @@ out.push(`- call site  : ${callLine === undefined ? 'NOT FOUND' : callLine.trim(
 out.push(`- source spells the widened expression: ${sameShape ? 'yes' : 'NO — this copy has drifted'}`);
 
 // 2. the real lines, through the real expression.
+// Both files come from the resolver: this probe's verdict is "every real safe-case line is
+// readable", and over a path that is not the ledger it reads zero lines and reports success.
+// `<repo>/.dsh-code` is empty for a migrated project, and `~/.dsh-code` was retired 2026-10-10.
+const ledger = await import('../lib/ledger.js');
 const ledgers = [
-  { scope: 'project', file: path.join(repo, '.dsh-code', 'mistakes.md') },
-  { scope: 'machine', file: path.join(os.homedir(), '.dsh-code', 'mistakes.md') },
+  { scope: 'project', file: ledger.ledgerPath(repo, 'mistakes') },
+  { scope: 'machine', file: path.join(ledger.globalDir(), 'mistakes.md') },
 ];
 let total = 0;
 let read = 0;

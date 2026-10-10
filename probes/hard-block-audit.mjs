@@ -22,12 +22,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
+// This audit's whole output is "which recorded entries can refuse an action". Run against paths
+// that are not the ledgers it scans nothing and reports that no entry can refuse — the exact
+// false negative it exists to end. Both sides come from the resolver.
+import { globalDir, ledgerPath } from '../lib/ledger.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, '..');
 const ledgers = [
-  { scope: 'project', file: path.join(repo, '.dsh-code', 'mistakes.md') },
-  { scope: 'machine', file: path.join(os.homedir(), '.dsh-code', 'mistakes.md') },
+  { scope: 'project', file: ledgerPath(repo, 'mistakes') },
+  { scope: 'machine', file: path.join(globalDir(), 'mistakes.md') },
 ];
 
 const field = (block, label) => {

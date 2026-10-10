@@ -57,7 +57,9 @@ console.log(`- backslashes: ${(literal?.match(/\\/g) ?? []).length}`);
 console.log(`- contains the substitution token: ${literal?.includes('${label}')}`);
 console.log(`- character codes: ${codes(literal ?? '')}`);
 
-const machineFile = path.join(os.homedir(), '.dsh-code', 'mistakes.md');
+// Resolved: this diagnostic is what you reach for when a field regex misbehaves, and the
+// machine ledger left `~/.dsh-code` on 2026-10-10 — it was reading a directory that is gone.
+const machineFile = path.join((await import('../lib/ledger.js')).globalDir(), 'mistakes.md');
 const realLine = fs
   .readFileSync(machineFile, 'utf8')
   .split('\n')

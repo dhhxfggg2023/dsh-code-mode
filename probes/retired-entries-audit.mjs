@@ -31,7 +31,10 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const globalDir = process.env.DSH_CODE_GLOBAL_DIR ?? path.join(os.homedir(), '.dsh-code');
+// Resolved, not restated: reading the retired `~/.dsh-code` made this audit report every
+// current entry as missing.
+const ledger = await import('../lib/ledger.js');
+const globalDir = ledger.globalDir();
 const current = path.join(globalDir, 'mistakes.md');
 const backup = process.argv[2] ?? path.join(globalDir, 'mistakes.md.bak-applies');
 

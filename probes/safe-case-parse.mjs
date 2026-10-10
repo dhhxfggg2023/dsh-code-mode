@@ -29,9 +29,13 @@ import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, '..');
+// Resolved, not restated: the parser that proves safe-cases are readable read zero entries
+// after the ledger moved (a migrated project's ledger is in the store, and the machine ledger
+// left `~/.dsh-code` on 2026-10-10) — so it was green about nothing.
+const ledger = await import('../lib/ledger.js');
 const files = [
-  { label: 'project', file: path.join(repo, '.dsh-code', 'mistakes.md') },
-  { label: 'machine', file: path.join(os.homedir(), '.dsh-code', 'mistakes.md') },
+  { label: 'project', file: ledger.ledgerPath(repo, 'mistakes') },
+  { label: 'machine', file: path.join(ledger.globalDir(), 'mistakes.md') },
 ];
 
 /**

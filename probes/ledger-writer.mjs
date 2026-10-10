@@ -10,7 +10,9 @@
  * with no host bootstrap — which is what makes a real multi-process race possible
  * here. (A worker thread would not do: threads and spawned children both get
  * fresh module resolution, and the *probe's* own bootstrap needs the Electron
- * binary, so the helpers must stay on the builtin-only path.)
+ * binary, so the helpers must stay on the builtin-only path.) The machine ledger
+ * it writes through is wherever `globalDir()` resolves — `~/.dsh/code` since
+ * 2026-10-10, not the retired `~/.dsh-code` this comment used to name.
  *
  * The file is imported as a module by the probe, so the work runs only when
  * `runOnce` is called or the file is invoked as an entry point.

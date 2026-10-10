@@ -24,8 +24,11 @@ import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, '..');
-const journalDir = path.join(repo, '.dsh-code');
-const globalMistakes = path.join(os.homedir(), '.dsh-code', 'mistakes.md');
+// Resolved, not restated: this checker's headline is "journal events read: N", and against the
+// wrong directories it printed 0 — a false negative for the very restart it exists to check.
+const ledger = await import('../lib/ledger.js');
+const journalDir = ledger.ledgerDir(repo);
+const globalMistakes = path.join(ledger.globalDir(), 'mistakes.md');
 
 function readLines(file) {
   if (!fs.existsSync(file)) return [];

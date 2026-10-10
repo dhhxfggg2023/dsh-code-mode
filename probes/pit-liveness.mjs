@@ -50,7 +50,7 @@ import path from 'node:path';
 // throws `ERR_UNSUPPORTED_ESM_URL_SCHEME` (only file:/data:/node: URLs are allowed, so a
 // raw path needs `pathToFileURL`). `lib/ledger.js` has no bare imports, so plain Node
 // resolves it directly and none of that is needed.
-import { DIRNAME, crossProjectTriggers, fileHitCounts, siblingProjects, triggerHitCounts } from '../lib/ledger.js';
+import { DIRNAME, crossProjectTriggers, fileHitCounts, globalDir, ledgerDir, siblingProjects, triggerHitCounts } from '../lib/ledger.js';
 
 const args = process.argv.slice(2);
 const AS_JSON = args.includes('--json');
@@ -71,9 +71,18 @@ const EXTRA_ROOTS = (() => {
 })();
 
 const project = process.cwd();
+/**
+ * Both directories come from the ledger's own resolver, not from this file.
+ *
+ * This report's entire verdict is "every recorded trigger and `files:` token still resolves",
+ * and run over a directory that is not the ledger it finds nothing — which reads exactly like
+ * healthy. Both paths here were wrong for this repository: a migrated project's ledger is in
+ * the machine's store, not in `<repo>/.dsh-code`, and the machine ledger moved to `~/.dsh/code`
+ * on 2026-10-10 while this file still named the retired `~/.dsh-code`.
+ */
 const ledgers = [
-  { scope: 'project', dir: path.join(project, '.dsh-code') },
-  { scope: 'global', dir: process.env.DSH_CODE_GLOBAL_DIR ?? path.join(os.homedir(), '.dsh-code') },
+  { scope: 'project', dir: ledgerDir(project) },
+  { scope: 'global', dir: globalDir() },
 ];
 
 const field = (block, label) => new RegExp(`^- ${label}: (.*)$`, 'm').exec(block)?.[1]?.trim();

@@ -22,7 +22,12 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
 const showHead = args.includes('--head');
-const target = args.find((arg) => !arg.startsWith('--')) ?? path.join(path.resolve(here, '..'), '.dsh-code', 'journal.jsonl');
+// The default target is this project's *resolved* journal: `<repo>/.dsh-code/journal.jsonl`
+// stopped existing when the ledger moved into the machine's store, so this diagnostic reported
+// "no journal at …" about a repository whose journal was a few directories away.
+const target =
+  args.find((arg) => !arg.startsWith('--')) ??
+  (await import('../lib/ledger.js')).ledgerPath(path.resolve(here, '..'), 'journal');
 const resolved = target.startsWith('~') ? path.join(os.homedir(), target.slice(1)) : target;
 
 if (!fs.existsSync(resolved)) {
