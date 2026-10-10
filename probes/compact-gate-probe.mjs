@@ -297,7 +297,7 @@ function mount(config, options) {
     ctx.asked.length === 1 &&
       ctx.asked[0].request.questions[0].id === 'code-compact-gate' &&
       ctx.asked[0].request.questions[0].question.includes('82%') &&
-      ctx.asked[0].timeoutMs === 120000,
+      ctx.asked[0].timeoutMs === gate.HUMAN_WAIT_MS,
     { calls: ctx.asked.length, timeoutMs: ctx.asked[0]?.timeoutMs, question: ctx.asked[0]?.request.questions[0].question },
   );
   check(
