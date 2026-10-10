@@ -97,7 +97,7 @@ out.push(`- project \`- safe case:\` lines: ${safeCases.length}`);
 for (const line of safeCases) out.push(`  ${line.replace(/\s+/g, ' ').slice(0, 150)}`);
 out.push(`- project \`- 安全情形\` lines (same idea, Chinese label): ${inflected.length}`);
 out.push(`- reading side: lib/pit-guard.js reads \`field('safe case/安全情形')\` and accepts an optional full-width parenthetical aside plus an ASCII or full-width colon before the value.`);
-out.push(`- **the verdict on whether a line reaches a notice is not in this file** — run \`node probes/safe-case-live.mjs\`, which applies the guard's own expression to these lines and reports how many it can read (measured 2026-10-06: 4 of 4, up from 0 of 4).`);
+out.push(`- **the verdict on whether a line reaches a notice is not in this file** — run \`node probes/safe-case-parse.mjs\`, which calls the guard's own reader (\`entryField()\` in \`lib/entry-fields.js\`) on these lines and reports how many it can read (measured 2026-10-10: 4 of 4 project, 7 of 7 machine).`);
 out.push(`- the running host still has the pre-fix parser until DSH restarts, so a notice seen in this session may not carry the line yet; see PENDING-RESTART.md.`);
 
 console.log(out.join('\n'));

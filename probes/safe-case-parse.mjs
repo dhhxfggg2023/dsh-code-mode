@@ -6,21 +6,22 @@
  * step. Two `- safe case（…）：…` lines do exist in the machine ledger and one
  * `- 安全情形（…）：…` line exists in the project ledger — and none of them were ever shown.
  *
- * The cause is a label mismatch, and the point of this file is to *measure* it against the
- * real parser instead of reading the regex and assuming. It imports nothing from the package:
- * it applies `lib/pit-guard.js`'s own field expression to each real line of both ledgers and
- * additionally tests the label shapes the ledgers actually use, so the gap is a printed
- * before/after rather than a claim about a regex.
+ * **This file owns the verdict since 2026-10-10**, and it owns it by construction: it calls
+ * `entryField()` from `lib/entry-fields.js`, the same function `lib/pit-guard.js` calls, so the
+ * two cannot disagree about what a safe case is. It reports both halves a reader needs — how many
+ * real lines parse, and which spellings the reader accepts — so the gap is a printed before/after
+ * rather than a claim about a regex.
+ *
+ * The two instruments it replaced are gone, and their history is why this one is shaped as it is:
+ * this file first *rebuilt* the guard's expression from a captured template literal (lossy for
+ * backslashes — it reported `no match` on the very shape the guard asks for), then
+ * `probes/safe-case-live.mjs` lifted the expression out of the source text and asserted the
+ * copies still spelled it that way, and `probes/field-regex-trace.mjs` counted the backslashes in
+ * that lifted line. On 2026-10-10 the reader moved into `lib/entry-fields.js`; with one function
+ * called by both sides there is no copy to compare against a source, so both files lost their
+ * subject and were deleted rather than migrated.
  *
  * Run: `node probes/safe-case-parse.mjs`
- *
- * **Superseded for the verdict by `probes/safe-case-live.mjs` (same day).** This file rebuilds
- * the guard's expression from a captured template literal, and that round trip is lossy for
- * backslashes: it went on reporting `no match` for every shape, including the one the guard
- * itself asks for, while the parser in `lib/pit-guard.js` was in fact reading all four real
- * safe-case lines. `safe-case-live.mjs` spells the expression exactly as the source does and
- * reports `4 of 4`. Keep this file for the per-spelling breakdown; take the verdict from the
- * other one.
  */
 import fs from 'node:fs';
 import path from 'node:path';
