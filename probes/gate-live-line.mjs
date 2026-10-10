@@ -347,6 +347,39 @@ check(
   );
 }
 
+// L8 — a compaction nobody announced. The host raises no event when the engine summarises the
+// conversation, so the gate reads the cliff in the meter and tells the session what it lost.
+{
+  const agent = agentFor('sess-live-compacted');
+  const ctx = mount({ totalTokens: 550_000, answer: { answers: [0, undefined, undefined] } });
+  gate.apply(ctx, MOUNTED);
+  const before = await step(ctx, agent);
+  ctx.tokens = 200_000; // the engine replaced the middle of the conversation
+  const after = await step(ctx, agent);
+  const texts = notices(after);
+  check(
+    'L8',
+    'a one-step drop of 100,000+ tokens is announced, and the session is told to re-read the ledger',
+    notices(before).length === 0 &&
+      texts.length === 1 &&
+      texts[0].includes('[code-compact-gate]') &&
+      texts[0].includes('just compacted') &&
+      texts[0].includes('code_brief') &&
+      after.kind === 'enter',
+    { noticesBefore: notices(before).length, noticesAfter: texts.length, notice: preview(texts[0] ?? '', 320) },
+  );
+  // The control: the pruner trims a few thousand tokens all the time, and that is not a
+  // compaction — a gate that announced one on every trim would be noise nobody reads.
+  ctx.tokens = 195_000;
+  const trimmed = await step(ctx, agent);
+  check(
+    'L9',
+    'control: a small one-step trim is not announced as a compaction',
+    notices(trimmed).every((text) => !text.includes('just compacted')),
+    { notices: notices(trimmed).length, texts: notices(trimmed).map((text) => preview(text, 120)) },
+  );
+}
+
 // --------------------------------------------------------------------- verdict
 const failed = results.filter((row) => !row.ok);
 const report = {
