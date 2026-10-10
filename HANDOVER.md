@@ -3,6 +3,18 @@
 > 给下一个会话（尤其是没有任何上下文的会话）看。最后更新：2026-10-01。
 > 安装/坑见 `INSTALL.md`，判据跑法见 `probes/README.md`，人工走查见 `TESTING.md`，实战教训见 `LESSONS.md`。
 
+## 〇、先做这五件事（2026-10-10 收尾；本节最新，其余部分多为旧）
+
+> **本文其余部分写于 2026-10-01/02，许多具体事实已经过期**（账本位置、探针数量、通过数、`lib/` 模块清单）。与账本冲突时以 `code_brief` 的 `## Runtime` 段为准——它打印解析后的账本目录与本会话占用。下一次大扫除时再重写全文。
+
+1. **重启 DSH，然后开一个新对话**（不要"恢复"旧会话）。2026-10-10 改的一整批 `lib/` 代码尚未生效——子插件模块只在挂载时 import 一次。
+2. 第一件事 `code_brief`：确认正文里有 **`## Runtime`** 段（账本目录 / 机器账本目录 / 本会话占用 / 问人线 / 引擎线）。没有就是没生效。
+3. **补 `probes/compact-gate-probe.mjs` 的 7 处**（卡片中文化后的遗留；确切行号与替换内容在账本 `2026-10-10` 的 progress 条目里）。Electron 通道跑回应 **35/35**；本会话它停在 26/35。当日还把 `hard block` 的编辑壁垒收窄成"只算条目自己管的动作"（commit `ab1c45a`），重启后不再挡正当编辑。
+4. **J6 的陈旧期望**（`probes/pit-guard-probe.mjs:317`）：它要求"记一条 mistake 就结清"，而现在的结清口径是"必须引用命令或错误签名"。同日 J3 与 N8/N8b 三条同类问题已修，J6 只是被那条壁垒挡住才没动。
+5. **刷新三份文档引用的通过数**（`debt-audit` 的 R6/R7/R8 会在同一处报红）：`handover-derive-probe` 19→**21**、`pit-guard-probe` 36/36→**35/36**、`cross-project-reach-probe` 5/5→**3/5**——最后一条要**重推 R3/R4 而不是删**，`probes/README.md` 里它的条目写明了原因（折叠逻辑已搬进 `lib/ledger.js`，幻影计数归零）。做完跑 `probes/.full-sweep.ps1`，26 组应全绿。
+
+**账本的真实位置（2026-10-10 起）**：项目账本在 `C:\Users\dhhxfggg\.dsh\code\projects\dsh-code-mode-56290bea\`（`<repo>/.dsh-code/CENTRAL` 只是指针，仓库里不再有账本文件），机器账本在 `C:\Users\dhhxfggg\.dsh\code\`。**本文下方凡写 `.dsh-code/` 或 `~/.dsh-code/` 的，都是旧位置。**
+
 ## 一、这是什么，在哪
 
 - **「编程模式」= DSH 的第五个 agent preset**，mode id `code`，与内置 `standard`/`ptc`/`minimal`/`cordis` 同级。
