@@ -19,6 +19,7 @@ mode id = `code`，显示名「编程模式」由 preset 声明自带（内置 l
 | 预算 | `lib/budget.js` | 插件 `code-budget`：事前拦「整文件读 >256KB」；事后裁超长结果为兜底 |
 | 压缩闸门 | `lib/compact-gate.js` | 插件 `code-compact-gate`，**挂在内置 `compaction` 组里、排在 `compaction-basic` 之前**（注册顺序决定 `agent/pre-step` waterfall 的先后，而内置引擎正是从这条事件自动压缩）：**60%**（`warnRatio`）推一次「该收尾了」的提醒（不拦）；到 **75%**（`gateRatio`）这一步先扣住，弹卡问人「压缩 / 让我继续 / 写交接文档」。它自己不压缩——选「压缩」就是放行给下面的引擎照常压；问不到人、超时、没有应答方、答案看不懂，一律放行（fail-open）；「让我继续」按占用率 +5% 记账，涨过才再问 |
 | 账本库 | `lib/ledger.js` | 纯函数库（无 loader 导出，**不能**作为 plugin 行注册）；同时拥有**项目**与**机器**两个 scope 的读写 |
+| 压缩策略 | `lib/compact-policy.js` | 纯函数库（无 loader 导出，**不能**作为 plugin 行注册）：闸门的判断全部在这里，**不 import 宿主**，所以普通 `node` 就能驱动它——这正是 `probes/gate-ahead-of-engine.mjs` 能拿它和引擎自己的算术对比的前提。`lib/compact-gate.js` 只留宿主胶水（读 `tokenMeter`/`llm`/`userQuestions`、扣步、附通知） |
 | 正则兜底 | `lib/pattern-matcher.js` | 纯函数库（无 loader 导出，**不能**作为 plugin 行注册）：在可复用的 worker 线程里跑一个 `trigger:` 并在 250 ms 后放弃。记录的正则是一种可以从账本文件进来的数据，而 JS 没有正则超时，所以约束来自「这个模块能终止的那个线程」；超时算**不匹配**，绝不挂住 `pre-execute` |
 | 判据 | `probes/` | 验证工具集，见 `probes/README.md` |
 | 能力总览 | `OVERVIEW.md` | 给使用者看的一份「它会做什么」总览：十个能力、两层账本的分法、以及边界（哪些是声称、哪些是实测） |

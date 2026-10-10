@@ -400,7 +400,8 @@ const OK_RESULT = { kind: 'result', isError: false, content: [{ type: 'text', te
       viaCommand[0].startsWith('A ledger already paid for a pit ') &&
       viaCommand[0].includes(`**${heading}**`) &&
       viaCommand[0].includes(`- do not repeat: ${RULE}`) &&
-      viaCommand[0].includes(`Full entry: .dsh-code/mistakes.md → \`## ${heading}\`.`) &&
+      viaCommand[0].includes('Full entry: ') &&
+      viaCommand[0].includes(`mistakes.md → \`## ${heading}\`.`) &&
       viaCmd.length === 1 &&
       viaScript.length === 1 &&
       viaMultiline.length === 1 &&

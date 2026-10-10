@@ -26,7 +26,20 @@
  * WARN and stays out of the exit code, because "this entry is old" is not "this entry
  * is broken".
  *
- * Usage: node probes/pit-liveness.mjs [--json]
+ * Usage: node probes/pit-liveness.mjs [--json] [--report <file>] [--roots <dir>[,<dir>…]]
+ *
+ * `--report` writes the same JSON `--json` prints to a file, for callers that cannot capture
+ * a child's stdout: measured 2026-10-06, `spawnSync(cmd, ['/c', '… > file'])` returned with the
+ * file 0 bytes under this session's policy, in both `cmd /c` and piping shapes. A probe that
+ * offers its own report file removes the need for that capture entirely.
+ *
+ * `--roots` adds directories to the cross-project promotion **scan**, so that the
+ * "reachable" verdict can be exercised on a machine where the condition does not hold.
+ * Measured 2026-10-05: this host has exactly one ledged project and `~/.dsh/projects` does
+ * not exist, so `roots.size > 1` cannot be satisfied and only the UNREACHABLE branch was
+ * ever *seen*. Measured 2026-10-06: that verdict was wrong anyway — the raw scan reported
+ * four candidates whose two "projects" were one directory spelled two ways. A verdict whose
+ * other branch has never executed is a claim about a branch, not a tested distinction.
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -41,6 +54,21 @@ import { DIRNAME, crossProjectTriggers, fileHitCounts, siblingProjects, triggerH
 
 const args = process.argv.slice(2);
 const AS_JSON = args.includes('--json');
+/** Optional path this probe writes its JSON report to, for callers that cannot capture stdout. */
+const REPORT_FILE = (() => {
+  const at = args.indexOf('--report');
+  return at === -1 || args[at + 1] === undefined ? undefined : path.resolve(args[at + 1]);
+})();
+/** Extra directories to include in the promotion scan; see the header for why this exists. */
+const EXTRA_ROOTS = (() => {
+  const at = args.indexOf('--roots');
+  if (at === -1 || args[at + 1] === undefined) return [];
+  return args[at + 1]
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0)
+    .map((entry) => path.resolve(entry));
+})();
 
 const project = process.cwd();
 const ledgers = [
@@ -253,13 +281,67 @@ const crossProject = rows.filter((row) => (row.crossProject ?? []).length > 0);
  * this repository keeps re-learning: say **which** of "no data" and "data says none" you
  * mean. `unverified` vs `unjudgeable`, `assert` vs `control` — same distinction.
  */
-const scannedRoots = [...new Set([project, ...siblingProjects(project)])];
-const promotions = crossProjectTriggers(scannedRoots);
-/** The filter needs hits in *two* projects; one root cannot satisfy it however hard it tries. */
-const promotionReachable = scannedRoots.length > 1;
+/**
+ * Fold the spellings of one project root that the journal happens to contain.
+ *
+ * Measured 2026-10-06, while disposing of `crossProjectTriggers` (the task's item 3): the
+ * report said `UNREACHABLE, not empty` — "this machine has one ledged project, so a rule can
+ * never span two" — and in the same run listed **four** promotion candidates whose two
+ * "projects" were `E:\projects\dsh-code-mode` and `E:/projects\dsh-code-mode`. Same directory,
+ * two spellings.
+ *
+ * The cause is structural rather than a typo: `entry.root` is recorded verbatim by whoever
+ * wrote the `trigger_hit`, and the same session can pass a backslash root while the ledger
+ * layer passes a forward-slash one — `crossProjectTriggers` then does `roots.add(root)` on the
+ * raw string, and a set cannot see that its two members are one project. Every path helper in
+ * this package normalises before comparing; this was the one comparison that did not.
+ *
+ * So the UNREACHABLE verdict was **false**: the condition is not unsatisfiable here, it is
+ * satisfied *spuriously*. That is a worse failure than the ambiguity the disposal set out to
+ * fix, because it turns a phantom into a recommendation ("consider recording it with
+ * scope=global") for rules that never crossed anything.
+ */
+const dedupeRoots = (roots) => {
+  const byKey = new Map();
+  for (const root of roots) {
+    if (typeof root !== 'string' || root.trim().length === 0) continue;
+    const key = root
+      .trim()
+      .replace(/\\/g, '/')
+      .replace(/\/+$/, '')
+      .toLowerCase();
+    if (!byKey.has(key)) byKey.set(key, root.trim().replace(/\\/g, '/'));
+  }
+  return [...byKey.values()];
+};
 
-if (AS_JSON) {
-  console.log(JSON.stringify({ failures, warnings, triggers: triggers.length, neverSeen: neverSeen.length, crossProject: crossProject.length, crossProjectReach: { rootsScanned: scannedRoots.length, reachable: promotionReachable }, canNotArrive: { total: inertTotal, of: entriesTotal, byScope: inertByScope }, promotions }, null, 2));
+const scannedRoots = [...new Set([project, ...siblingProjects(project), ...EXTRA_ROOTS])];
+const scanned = dedupeRoots(scannedRoots);
+/** The raw scan, before spellings of one root are folded; >1 does not mean two projects. */
+const rawPromotions = crossProjectTriggers(scannedRoots);
+const promotions = rawPromotions
+  .map((rule) => ({ ...rule, roots: dedupeRoots(rule.roots) }))
+  .filter((rule) => rule.roots.length > 1);
+/** What the raw scan called cross-project, and what survives folding. */
+const spuriousPromotions = rawPromotions.filter((rule) => dedupeRoots(rule.roots).length <= 1);
+/** The filter needs hits in *two* projects; one root cannot satisfy it however hard it tries. */
+const promotionReachable = scanned.length > 1;
+
+if (AS_JSON || REPORT_FILE !== undefined) {
+  const report = JSON.stringify({ failures, warnings, triggers: triggers.length, neverSeen: neverSeen.length, crossProject: crossProject.length, crossProjectReach: { rootsScanned: scannedRoots.length, distinctRoots: scanned.length, reachable: promotionReachable, roots: scanned, extraRoots: EXTRA_ROOTS, phantomPromotions: spuriousPromotions.length }, canNotArrive: { total: inertTotal, of: entriesTotal, byScope: inertByScope }, promotions }, null, 2);
+  if (AS_JSON) console.log(report);
+  if (REPORT_FILE !== undefined) {
+    /**
+     * A report that cannot be written must fail loudly rather than look like a clean run:
+     * a caller reading the file would otherwise see a stale one and believe it.
+     */
+    try {
+      fs.writeFileSync(REPORT_FILE, `${report}\n`, 'utf8');
+    } catch (error) {
+      console.error(`could not write the report to ${REPORT_FILE}: ${error.message}`);
+      process.exitCode = 1;
+    }
+  }
 } else {
   console.log(`pit liveness — ${rows.length} entr(ies), ${triggers.length} with a trigger`);
   for (const { scope, dir } of ledgers) console.log(`  ${scope.padEnd(7)} ${dir}`);
@@ -301,6 +383,14 @@ if (AS_JSON) {
     console.log(
       `\nno cross-project promotion candidates: 0 across the ${scannedRoots.length} ledged project(s) scanned — the condition **was** satisfiable and nothing met it.`,
     );
+  }
+  if (spuriousPromotions.length > 0) {
+    console.log(
+      `Phantom ${spuriousPromotions.length} promotion(s) collapsed: the raw scan counted two spellings of one root as two projects (measured 2026-10-06: \`E:\\projects\\dsh-code-mode\` and \`E:/projects/dsh-code-mode\`), so \`roots.size > 1\` is satisfiable here *spuriously*. Folded by separator and case before the count. The same fold belongs in \`crossProjectTriggers\` (lib/ledger.js:1242) — until it is there, any caller of that function sees phantoms:`,
+    );
+    for (const rule of spuriousPromotions) {
+      console.log(`  PHANTOM ${rule.heading} — ${rule.roots.join(' == ')}`);
+    }
   }
 }
 process.exitCode = failures.length === 0 ? 0 : 1;

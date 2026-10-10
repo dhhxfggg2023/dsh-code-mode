@@ -26,9 +26,20 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const PKG_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const scratch = (tag) => fs.mkdtempSync(path.join(os.tmpdir(), `dsh-filehit-${tag}-`));
 const machine = scratch('machine');
-process.env.DSH_CODE_GLOBAL_DIR = machine;
-
 const ledger = await import(pathToFileURL(path.join(PKG_DIR, 'lib', 'ledger.js')).href);
+/**
+ * This project's *real* `mistakes.md`, resolved before the fixture override below.
+ *
+ * This probe proves that the `files:` tokens the real ledger records still match the real edits,
+ * so it has to read the real ledger — while its own writes must land in a scratch machine
+ * ledger. Resolving it after `DSH_CODE_GLOBAL_DIR` was redirected sent it looking for this
+ * project inside the scratch store (`<scratch>/projects/dsh-code-mode-56290bea/mistakes.md`,
+ * ENOENT), and the hardcoded `<repo>/.dsh-code/mistakes.md` it used before that is an ENOENT
+ * since the ledger moved into the store (2026-10-10). Capture the path once, from the resolver,
+ * while the environment still describes this machine.
+ */
+const realMistakes = ledger.ledgerPath(PKG_DIR, 'mistakes');
+process.env.DSH_CODE_GLOBAL_DIR = machine;
 const SESSION = 'filehit-probe';
 
 const results = [];
@@ -79,7 +90,7 @@ const refersTo = (target, token) => {
 };
 
 {
-  const mistakes = fs.readFileSync(path.join(PKG_DIR, '.dsh-code', 'mistakes.md'), 'utf8');
+  const mistakes = fs.readFileSync(realMistakes, 'utf8');
   const tokens = [];
   for (const line of mistakes.split('\n')) {
     if (!/^\[?"?files:/.test(line.trim()) && !line.trim().startsWith('- files:')) continue;

@@ -35,6 +35,7 @@ $P = '<pkg>\probes'     # 本机是 E:\projects\dsh-code-mode\probes
 & '<node>' "$P\utf8-check.mjs"               # 本轮改动文件的严格 UTF-8              期望 18/18
 & '<node>' "$P\handover-derive-probe.mjs"    # 转接派生：只从账本派生、有界、只读        期望 19/19
 & '<node>' "$P\effect-audit-probe.mjs"      # 效果审计：机制到底有没有产生过价值          期望 8/8
+& '<node>' "$P\cross-project-reach-probe.mjs"  # 晋升 verdict 两分支都真的跑过（幽灵根折叠）  期望 5/5
 
 # 需要 Electron 二进制（从 asar 加载宿主解析）
 $env:ELECTRON_RUN_AS_NODE='1'

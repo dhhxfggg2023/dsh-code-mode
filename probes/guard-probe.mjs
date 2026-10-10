@@ -391,7 +391,13 @@ process.env.DSH_CODE_GLOBAL_DIR = hermeticGlobal;
   check(
     'E2',
     'an unrelated mistake does not clear a failing-command debt',
-    unrelatedBody.includes('does not name those commands') && unrelatedBody.includes('journal.jsonl'),
+    // The anchor here has moved twice, and both moves were the *assertion* being stale:
+    //   2026-10-05 re-worded `does not name those commands` to `unsettleable, not unpaid`;
+    //   2026-10-10 then measured that the sentence is cut off by the 240-character body slice
+    //   this check prints, so the assertion could not see it at all. The property is unchanged
+    //   and is what is asserted now: the debt survives an unrelated mistake, and what remains
+    //   says it can never be cleared and points at `journal.jsonl` as the evidence.
+    /no later entry can clear them/.test(unrelatedBody) && unrelatedBody.includes('journal.jsonl'),
     { body: unrelatedBody.slice(0, 300) },
   );
   check('E2', 'a mistake that quotes the failure settles it', showsFailureDebt([debt, quotes]).trim().length === 0, {
@@ -412,8 +418,11 @@ process.env.DSH_CODE_GLOBAL_DIR = hermeticGlobal;
   check(
     'E2',
     'a mistake about another file in the same command does not settle it',
-    showsFailureDebt([probeDebt, { ...names, symptom: 'something else broke', cause: 'x', fix: 'y', files: 'lib/budget.js' }])
-      .includes('does not name those commands'),
+    // Same anchor move as the check above (2026-10-05 wording, 2026-10-10 truncation): what must
+    // hold is that a mistake filed against a *different* file leaves the debt standing.
+    /no later entry can clear them/.test(
+      showsFailureDebt([probeDebt, { ...names, symptom: 'something else broke', cause: 'x', fix: 'y', files: 'lib/budget.js' }]),
+    ),
     { body: showsFailureDebt([probeDebt, { ...names, symptom: 'something else broke', cause: 'x', fix: 'y', files: 'lib/budget.js' }]).slice(0, 240) },
   );
 }

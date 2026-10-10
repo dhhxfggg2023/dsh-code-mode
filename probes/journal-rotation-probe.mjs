@@ -55,10 +55,18 @@ try {
 
   // --- the paid-for line, first: a failing command with no mistake recorded. It must
   // --- be found later, from a segment that will no longer be the live file.
+  //
+  // --- The debt is filed under `SESSION`, not under a made-up earlier session. Since
+  // --- 2026-10-10 the briefing collapses a *previous* session's failures into one counted
+  // --- line and never names them, so a debt filed under an earlier session could not be
+  // --- found by name here however well rotation worked — the check would be measuring the
+  // --- debt rule instead of the rotation it exists for, which is what J3 did when it was
+  // --- filed as `older-session` (measured 2026-10-10: the named line was gone, and the rule
+  // --- was behaving correctly).
   const debtLine = JSON.stringify({
     ts: '2026-10-03T00:00:00.000Z',
     kind: 'mistake_unrecorded',
-    session: 'older-session',
+    session: SESSION,
     failures: [{ cmd: 'node broken.mjs', signature: 'sig-1' }],
   });
   fs.appendFileSync(JOURNAL, `${debtLine}\n`, 'utf8');

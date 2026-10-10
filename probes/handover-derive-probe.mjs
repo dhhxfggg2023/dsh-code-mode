@@ -644,6 +644,84 @@ check(
   { changed: seen },
 );
 
+// ------------------- N8: an old session's failures are counted, not led with
+//
+// `N2c` still holds, but it cannot prove this behaviour: its fixture writes debt for **one**
+// prior session, so that session is the most recent one either way and nothing is ever
+// classified as old. The change under test needs three sessions in the journal to exist at all.
+//
+// Why it is worth a check of its own: measured 2026-10-05 on this repository, 67 distinct
+// unsettled failures spanned 16 sessions, all of them other than the current one, and each of
+// those sessions *had* recorded a mistake. They stay "unwritten" only because settlement
+// matches per the letter — the command line or its error signature must be quoted — and nobody
+// will go back and quote commands from 2026-10-02. So the old half is **unsettleable, not
+// unpaid**, and `## Next` was spending its first screen on it, ahead of the two fields the
+// section exists to carry. The control in the other direction is `N8b`: the previous session's
+// own failure must still arrive as a row, or this "fix" would be a way of showing nothing.
+{
+  const multiDir = scratch('multi-session');
+  /**
+   * The older sessions' debts go in **first**, into a journal this project's own session has not
+   * written to yet — because the journal is append-only, an earlier session's entries are always
+   * *encountered* before a later session's, and `sessionOrderBefore()` decides "previous" from
+   * that order. Writing them through `buildRich`'s hook instead put this session's `init` lines
+   * at position 0 (`initLedger` writes the session that initializes the ledger), after which the
+   * current session was the *first* one seen, nothing was classified as older, and `N8`/`N8b`
+   * failed while the rule they test behaved correctly (measured 2026-10-10).
+   *
+   * Their timestamps are fixed and later than every record `buildRich` writes, so none of those
+   * mistakes counts as "a mistake recorded after this one" — each debt stays a plain unsettled
+   * failure, which is what `## Next` is supposed to lead with.
+   */
+  fs.mkdirSync(path.join(multiDir, '.dsh-code'), { recursive: true });
+  const debts = [
+    { session: 'sess-oldest', ts: '2026-10-11T00:00:01.000Z', cmd: 'node probes/OLDEST-nobody-wrote-this.mjs' },
+    { session: 'sess-middle', ts: '2026-10-11T00:00:02.000Z', cmd: 'node probes/MIDDLE-nobody-wrote-this.mjs' },
+    { session: 'sess-newest', ts: '2026-10-11T00:00:03.000Z', cmd: 'node probes/NEWEST-nobody-wrote-this.mjs' },
+  ];
+  for (const debt of debts) {
+    appendJournal(multiDir, {
+      ts: debt.ts,
+      session: debt.session,
+      kind: 'mistake_unrecorded',
+      turn: 1,
+      failures: [{ cmd: debt.cmd, signature: `SIG-${debt.session}` }],
+    });
+  }
+  buildRich(multiDir, { title: 'N8 inflight task', note: 'notes' });
+  const multi = ledger.handover(multiDir, { session: SESSION });
+  const oldestLine = (multi.text.match(/^- \d\d\d\d-\d\d-\d\d \d\d:\d\d · 1 failing command\(s\), no mistake recorded:/m) ?? [])[0] ?? '';
+  check(
+    'N8',
+    'the most recent prior session keeps a row while older sessions collapse to one counted line',
+    multi.text.includes('NEWEST-nobody-wrote-this.mjs') &&
+      multi.text.includes('unsettleable, not unpaid') &&
+      multi.text.includes('2 earlier session(s)') &&
+      multi.text.includes('2 failing command(s)') &&
+      !multi.text.includes('OLDEST-nobody-wrote-this.mjs') &&
+      !multi.text.includes('MIDDLE-nobody-wrote-this.mjs'),
+    {
+      newestRowKept: multi.text.includes('NEWEST-nobody-wrote-this.mjs'),
+      countedLine: (multi.text.match(/… \d+ failing command\(s\)[^\n]*/) ?? ['(no counted line)'])[0].slice(0, 200),
+      oldestLeaked: multi.text.includes('OLDEST-nobody-wrote-this.mjs'),
+      middleLeaked: multi.text.includes('MIDDLE-nobody-wrote-this.mjs'),
+      rows: multi.text.split('\n').filter((line) => /failing command\(s\)/.test(line)).map((line) => line.slice(0, 120)),
+    },
+  );
+  check(
+    'N8b',
+    'control: collapsing the old sessions keeps the previous session\'s row and its command',
+    multi.text.includes('NEWEST-nobody-wrote-this.mjs') &&
+      !multi.text.includes('NEWEST-nobody-wrote-this.mjs …') &&
+      !multi.text.includes('Read journal.jsonl in .dsh-code and record each one that mattered'),
+    {
+      newestRowKept: multi.text.includes('NEWEST-nobody-wrote-this.mjs'),
+      oldProseGone: !multi.text.includes('Read journal.jsonl in .dsh-code and record each one that mattered'),
+      text: preview(multi.text.slice(Math.max(0, multi.text.indexOf('Failures nobody')), multi.text.indexOf('Failures nobody') + 500), 520),
+    },
+  );
+}
+
 // ------------------------------------------------------------------------ verdict
 if (process.env.DSH_HANDOVER_DERIVE_DIAG === '1') {
   // What the derived view actually looks like, for a human reading a failure. Off by

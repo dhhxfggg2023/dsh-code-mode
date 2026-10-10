@@ -389,6 +389,15 @@ const RUNNABLE = [
   // entry, so entries that fire in the *same* action can be found, which is the redundancy a
   // symptom-based merge cannot see. Read-only, and one of its checks pins that.
   'pit-report.mjs',
+  // Added 2026-10-06 with the cross-project disposal. Same contract as the entries above:
+  // `lib/` only, plain Node, and it writes the `-report.json` this list requires — with the
+  // argument-less invocation the audit uses, so it does not depend on being spawned with flags.
+  // What it adds is the half that was never exercised: `pit-liveness`'s promotion verdict has
+  // two branches, and on this machine only one of them had ever run. Driving the other one is
+  // how the *first* branch turned out to be wrong — the report said the condition was
+  // unsatisfiable while the same run listed four candidates whose two "projects" were one
+  // directory spelled two ways.
+  'cross-project-reach-probe.mjs',
 ];
 const probeRuns = [];
 const electronRuns = [];
@@ -550,6 +559,21 @@ const failedRuns = probeRuns.filter((run) => {
   if (run.exitCode !== 0) return true;
   return run.reported === false && run.spawnError === undefined;
 });
+/**
+ * Name the red runs on stderr as well as in the check's evidence.
+ *
+ * Added 2026-10-06 after losing a diagnosis to this: `pit-guard-probe` came back
+ * `exit=1 passed=35/36` with its own `PIT-PROBE-DETAIL` line on stderr — which the audit
+ * discards, since it spawns children with `stdio: 'ignore'` — so the one probe that knew which
+ * check failed was the one whose explanation was thrown away. The check's own JSON evidence is
+ * only readable by a caller that can parse the audit's stdout; a wrapper that shows stderr is
+ * the common case.
+ */
+if (failedRuns.length > 0) {
+  console.error(
+    `DEBT-AUDIT-RED ${JSON.stringify(failedRuns.map((run) => ({ file: run.file, exitCode: run.exitCode, passed: run.passed, total: run.total, reported: run.reported, spawnError: run.spawnError })))}`,
+  );
+}
 const unavailableRuns = probeRuns.filter((run) => run.unavailable !== undefined);
 check(
   'R5',
