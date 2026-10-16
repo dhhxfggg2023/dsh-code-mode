@@ -337,10 +337,9 @@ check('E1', 'every shipped text file is valid UTF-8 (no lossy-encode damage)', u
 // spawn) every Electron probe is recorded as `unavailable` — a state R5 names on its face,
 // never a pass.
 const ELECTRON_RUNNABLE = ['acceptance-probe.mjs', 'pit-guard-probe.mjs'];
-// `handover-grant-probe.mjs` was here until 2026-10-11, when the compaction gate it drove
-// (`lib/compact-gate.js`) was deleted with the gate itself. It existed for one reason: it
-// stubs the two host imports instead of loading resolution from the asar, so plain Node could
-// run it where `compact-gate-probe.mjs` could not — and both of those probes are gone now.
+// `handover-grant-probe.mjs` was here until 2026-10-11, when the compaction gate it drove was
+// deleted. It existed for one reason: it stubs the two host imports instead of loading
+// resolution from the asar, so plain Node could run it where the Electron probes cannot.
 //
 // The three ledger probes are here for a different reason: they import `lib/ledger.js`
 // directly (it has no bare imports), so they can assert journal rotation, the write-side

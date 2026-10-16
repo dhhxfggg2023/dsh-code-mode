@@ -84,8 +84,8 @@
   package.json          私有包；exports 只有 "./lib/*.js"；peerDependencies = schemastery + dsh-llm + dsh-tools
   cordis.patch.yml      preset-code → @deepseek-ai/dsh-agent-preset，config.id: code / order: 5
                         19 段标准子插件 + code-memory 组（8 行），共 42 个嵌套条目
-                        （内置 compaction 组里**没有**本项目的行：code-compact-gate
-                          2026-10-11 连同它的模块一起删了）
+                        （内置 compaction 组里本项目的行：压缩的时机交还 harness，
+                           本模式只管压缩写出来的东西来自账本交接）
   lib/prompt.js         提示段 code-ledger（order -50）：账本协议 + Working habits 八条
   lib/tool-brief.js     code_brief（按段分配预算，省略必告知）
   lib/tool-record.js    code_record（五种 kind；done 需证据）

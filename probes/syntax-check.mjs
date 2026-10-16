@@ -22,10 +22,8 @@ import { fileURLToPath } from 'node:url';
 const PKG = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FILES = [
   // The module a plain-node probe imports directly, and the ledger-derived checkpoint the
-  // compaction row mounts. `compact-gate.js`/`compact-policy.js` were here until 2026-10-11, when
-  // the gate was deleted; `recite.js` is the ledger feature that used to live in the gate's file,
-  // and it is parsed here for the same reason the gate's pair was: a probe drives it without a
-  // host, so a parse error in it must not be discoverable only by running that probe.
+  // compaction row mounts. `recite.js` is a ledger feature a probe drives without a host, so a
+  // parse error in it must not be discoverable only by running that probe.
   'lib/recite.js',
   'lib/compact-summary.js',
   // `ledger.js` is the largest module here and the one most edits land in, so a

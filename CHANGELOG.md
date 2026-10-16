@@ -18,8 +18,7 @@
   `lib/compaction.js`（折叠定价）、`probes/fold-gate.mjs`、`probes/bili-*.mjs`，
   以及从 billion-context 抽出的源码树 `probes/src/`、`probes/kernel/`。
   `lib/prompt.js` 的第七条 Working habit（整条折叠经济学）一并删除。
-- 两个一次性迁移脚本：`probes/record-session-outcome.mjs`、
-  `probes/cleanup-migrated-ledgers.mjs`（按构造带绝对路径，无人引用）。
+- 两个一次性迁移脚本（按构造带绝对路径，无人引用；**已不在本包中**）
 
 ### 恢复
 
