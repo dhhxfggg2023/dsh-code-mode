@@ -29,10 +29,10 @@ const decisions = [
   '',
   `## ${now} · 账本只有一个家：~/.dsh/code/`,
   '',
-  '- 机器账本（跨项目事实）：`C:\\Users\\dhhxfggg\\.dsh\\code\\` —— `project.json` / `decisions.md` / `mistakes.md` / `journal.jsonl`（机器层没有任务板，设计如此）。',
-  '- 项目账本（随项目走的那份）：`C:\\Users\\dhhxfggg\\.dsh\\code\\projects\\<项目名>-<8位哈希>\\`，目录里有 `project-root` 文件写明它属于哪个项目。',
+  '- 机器账本（跨项目事实）：`~/.dsh/code/` —— `project.json` / `decisions.md` / `mistakes.md` / `journal.jsonl`（机器层没有任务板，设计如此）。',
+  '- 项目账本（随项目走的那份）：`~/.dsh/code/projects/<项目名>-<8位哈希>\\`，目录里有 `project-root` 文件写明它属于哪个项目。',
   '- 迁移过的项目在仓库里只留一个 3 行指针 `<repo>/.dsh-code/CENTRAL`（内容 `central <项目绝对路径>`）。**没有指针就不迁移**——这是刻意的：`guard-probe` 等 25+ 个判据会手工播种 `<fixture>/.dsh-code/`，把"新项目一律进统一库"会让一个文件出现两个所有者（实测把该探针从 45 项全绿变成红）。',
-  '- 已迁移：`D:\\Android\\project\\BLbox`(48KB)、`D:\\Android\\project\\PJM`(99KB)、`E:\\projects\\dsh-code-mode`(2.8MB，含 4 个 journal 轮转段)、`E:\\tools\\DSH`(7KB)。旧目录里的副本已删除，各仓库现在只剩指针。',
+  '- 已迁移：另外三个项目（各自 7KB–2.8MB，其中一个含 4 个 journal 轮转段）与本包自己。旧目录里的副本已删除，各仓库现在只剩指针。',
   '- 迁移工具：`probes/migrate-ledgers.mjs`（默认预演，`--apply` 才动；复制不搬、目标已存在先存 `.bak`、带"读方就绪"预检）；退役工具：`probes/retire-machine-ledger-home.mjs`（逐文件比对字节数才删，含递归比对）；判据：`probes/ledger-store-probe.mjs` S1–S8。',
   '',
 ].join('\n');

@@ -90,7 +90,7 @@ GraphFlow 有整套 `benchmarks/`、SWE-bench、golden corpus、A/B 报告，然
 - **T1（转接派生）**：转接的 `Avoid` 段派生自 `mistakes.md`，所以**命中率正是转接质量的上游指标** ——
   一条从未命中、也从未被更正的坑，正在被派生成"需要避免的东西"交给下一个会话。
 - **`session_start` 重复**（任务板已登记「去重不稳定」）：本轮在真实 journal 里复现
-  （`session-481fe670` 在 13:01:28/13:01:35/13:01:42 三条，`processBoot` `...572`/`...573`/`...572`）。
+  （一个 session id 在 13:01:28/13:01:35/13:01:42 三条，`processBoot` `...572`/`...573`/`...572`）。
   它会影响 `restart_pending` 的结清（结清靠"其后又有 `session_start`"这条纯事件顺序），
   所以它同时是效果审计的一个**必须报的输入质量缺陷**。
 
@@ -137,8 +137,8 @@ GraphFlow 有整套 `benchmarks/`、SWE-bench、golden corpus、A/B 报告，然
 但那个探针**看不见自己已经知道的事**。这正是那条坑警告的偏向：**偏严的阈值把"发生过"报成"从未发生"**。
 
 **但 `NO CHANCE YET` 这个 verdict 仍然成立，而且理由变得更锋利**：那 28 个全部在**挂载之前**，
-且全部落在**别的项目**下（`~\--D-Android-project-BLbox--`、
-`~\--C-Users-dhhxfggg-.astrbot-data-plugins-astrbot_plugin_fishing_mini--`、`~\--E-tools-DSH--`）——
+且全部落在**别的项目**下（三个项目目录，路径形如
+`~\--D-Android-project-<project>--`、`~\--C-Users-<user>-.astrbot-data-plugins-<plugin>--`、`~\--E-tools-DSH--`）——
 这些会话跑的是**别的 preset**，而这个闸门只存在于 `code` 预设里，**它们本来就不可能触发它**。
 所以真正该问的零证据命题应当收紧成：
 **从来没有一个使用 `code` 预设的会话到过闸门的提问线。**
@@ -173,16 +173,16 @@ GraphFlow 有整套 `benchmarks/`、SWE-bench、golden corpus、A/B 报告，然
 | 日志 | `system/message` 帧 | 命中 `## Project ledger` |
 | --- | --- | --- |
 | 本项目最新会话（跑 `code` 预设） | 1 | **1** |
-| `--D-Android-project-BLbox--` 2026-09-13 | 1 | **0** |
-| `--E-tools-DSH--` 2026-10-02T04:16 | 2 | **2** |
+| `<另一个项目的日志>` 2026-09-13 | 1 | **0** |
+| `<DSH 安装目录的日志>` 2026-10-02T04:16 | 2 | **2** |
 
 **结论三条**：
 
 1. **marker 有效且两向都测过**：跑 `code` 预设的会话里，`system/message` 帧**必然**带这段；预设还不存在时的会话里**没有**。
-2. **但反例的混淆没消掉**：那份 BLbox 日志是 2026-09-13，**预设当时还不存在**，所以它的"没有"既能解释为"没跑这个预设"，也能解释为"那时没有这个预设"。**我还没有一份"预设存在之后、但没跑 `code` 预设"的日志** —— 所以"确定性判别"仍差一个反例。
-3. **`--E-tools-DSH--` 那份竟然跑了 `code` 预设**（两帧都带 marker）。这条比反例更有用：它说明**预设的使用是跨项目的** —— 本项目有过不用它的会话，别的项目也有用它的会话。所以
+2. **但反例的混淆没消掉**：那份日志是 2026-09-13，**预设当时还不存在**，所以它的"没有"既能解释为"没跑这个预设"，也能解释为"那时没有这个预设"。**我还没有一份"预设存在之后、但没跑 `code` 预设"的日志** —— 所以"确定性判别"仍差一个反例。
+3. **`<DSH 安装目录>` 那份竟然跑了 `code` 预设**（两帧都带 marker）。这条比反例更有用：它说明**预设的使用是跨项目的** —— 本项目有过不用它的会话，别的项目也有用它的会话。所以
    **分母必须逐会话判定，不能按项目推断**。这一条同时收紧了上一节那个"零证据"命题：不能说"别的项目没跑过这个预设"。
-   （`gate-chance` 报的那 28 个到过 0.75 的会话都在 BLbox / astrbot 下，而这两处是否跑过 `code` 预设**仍未逐份判定**。）
+   （`gate-chance` 报的那 28 个到过 0.75 的会话都在另外两个项目下，而这两处是否跑过 `code` 预设**仍未逐份判定**。）
 
 **仍未做（工程缺口，不是科学缺口）**：上面这份证据来自**一次性的 shell 复现**，而 `check-prompt-section.mjs` 仍然只读 `newestLog`、没有 `--path`。也就是说**仓库里还没有一个 owner 拥有"对任意日志判定 preset"这件事** —— 这正是本项目最忌讳的"第二份实现"，只是这次它活在一条命令里，更容易被忘掉。要么给那个探针加 `--path`，要么把判定抽成共享函数；**在它落盘之前，任何按 preset 筛分母的代码都还没有 owner。**
 
@@ -196,8 +196,8 @@ GraphFlow 有整套 `benchmarks/`、SWE-bench、golden corpus、A/B 报告，然
 **实测**（`code_verify` VERIFIED）：
 
 ```
-parent E:\projects : 1 dir(s) with .dsh-code          (只有 dsh-code-mode 本身)
-parent C:\Users\dhhxfggg\.dsh\projects : MISSING
+parent <工作区所在目录>        : 1 dir(s) with .dsh-code   (只有本包自己)
+parent <用户目录>\.dsh\projects : MISSING
 distinct trigger_hit roots in this journal: 1
 sibling projects with a ledger (excluding current): 0
 ```

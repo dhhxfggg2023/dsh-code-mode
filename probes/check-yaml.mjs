@@ -1,7 +1,8 @@
-import { PKG_DIR } from './paths.mjs';
+import { PKG_DIR, profileDir } from './paths.mjs';
 import path from 'node:path';
 import fs from 'node:fs';
-const yaml = await import('file:///C:/Users/dhhxfggg/.dsh/profiles/desktop/node_modules/js-yaml/index.js');
+import { pathToFileURL } from 'node:url';
+const yaml = await import(pathToFileURL(path.join(profileDir(), 'node_modules', 'js-yaml', 'index.js')).href);
 const src = fs.readFileSync(path.join(PKG_DIR, 'cordis.patch.yml'), 'utf8');
 const JsExpr = new yaml.Type('tag:yaml.org,2002:js', {
   kind: 'scalar',

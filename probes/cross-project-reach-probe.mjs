@@ -13,7 +13,7 @@
  *      the two cases" was a claim about code nobody had run — the same defect shape as the
  *      compaction gate's fabricated 100,000-token window. This probe drives both branches.
  *   2. **The UNREACHABLE verdict was false.** Running it printed four promotion candidates
- *      whose two "projects" were `E:\projects\dsh-code-mode` and `E:/projects\dsh-code-mode`:
+ *      whose two "projects" were one directory spelled two ways:
  *      one directory, two spellings. `crossProjectTriggers` does `roots.add(entry.root)` on the
  *      raw string (`lib/ledger.js:1242`), and a set cannot see that its members are one project.
  *      So the condition is not unsatisfiable — it is satisfied *spuriously*, which is worse,

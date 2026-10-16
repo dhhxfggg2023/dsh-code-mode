@@ -107,7 +107,7 @@ if (recentDebtSession !== undefined && debt.session !== recentDebtSession) {
 `lib/ledger.js` 在本会话**第二次编辑时被硬拦拒绝**：
 
 ```
-Error: A recorded pit refused this in E:\projects\dsh-code-mode\lib\ledger.js,
+Error: A recorded pit refused this in <这个包的 checkout>/lib/ledger.js,
 the file you are about to change — the entry declares `hard block: 2`,
 and this is hit 3 of this session.
 ```
@@ -205,7 +205,7 @@ if (recentDebtSession !== undefined && debt.session !== recentDebtSession) {
 **本会话新发现**（`pit-liveness` 真机实测，见 TODO）：审计说 `crossProjectTriggers` 的晋升条件
 "本机按构造不可达"，**这个结论是错的**。同一次运行里它既打印 `UNREACHABLE, not empty`，
 又列出 **4 条**"跨项目"候选，而每一条的两个"项目"是
-`E:\projects\dsh-code-mode` 与 `E:/projects\dsh-code-mode` ——**同一个目录的两种拼写**。
+一个目录的两种拼写 ——**同一个目录的两种拼写**。
 
 **根因**：`lib/ledger.js:1242` 的 `byRule.get(key).roots.add(String(entry.root ?? root))`
 拿**原始字符串**去 `Set` 里去重；`entry.root` 是写 `trigger_hit` 的那一方逐字记下的，

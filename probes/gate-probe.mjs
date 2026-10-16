@@ -1,9 +1,9 @@
-// Behavioural probe for E:\tools\DSH\dsh-code-mode\lib\gate-verify.js (plugin name 'code-gate')
+// Behavioural probe for <这个包的 checkout>/lib/gate-verify.js (plugin name 'code-gate')
 // plus the new ledger helpers recordUnverified / unverifiedExcerpt (via brief) / recentJournal detail.
 //
 // Run (resolution bootstrap is required: the modules import @deepseek-ai/* bare specifiers):
 //   $env:ELECTRON_RUN_AS_NODE='1'
-//   & 'E:\tools\DSH\DeepSeek Harness.exe' --expose-internals 'E:\tools\DSH\.dsh-probe\gate-probe.mjs'
+//   & '<install>\DeepSeek Harness.exe' --expose-internals '<这个包的 checkout>\probes\gate-probe.mjs'
 //
 // Outputs: gate-log.txt (human log) and gate-report.json (the FULL result object, both in the OS
 // temp dir), plus one compact JSON line on stdout: { summary, findings: [id, …], report, config? }.

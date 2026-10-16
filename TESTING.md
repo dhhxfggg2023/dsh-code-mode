@@ -10,7 +10,7 @@
 路径不用手填：`probes/paths.mjs` 会自己发现安装目录（也可以用 `DSH_ASAR` / `DSH_EXE` 覆盖）。
 
 ```powershell
-$P = '<pkg>\probes'     # 本机是 E:\projects\dsh-code-mode\probes
+$P = '<pkg>\probes'     # 本机是 <这个包的 checkout>\probes
 
 # 只需要普通 node 的
 & '<node>' "$P\build-preset.mjs" --check     # 组合没漂移（严格超集）     期望 PASS
@@ -95,7 +95,7 @@ Record the basics before exploring: code_record(kind="project", ...)
 
 **期望**：新会话能说出第 2 步记下的内容 —— 这就是"换了会话还记得"。
 
-**判据**：账本在**那个工作区**的 `.dsh-code\` 里；`E:\tools\DSH\.dsh-code\` 不该出现；简报里不该出现别的工作区的内容。
+**判据**：账本在**那个工作区**的 `.dsh-code\` 里；`<install>\.dsh-code\` 不该出现；简报里不该出现别的工作区的内容。
 **失败**：账本写到了 DSH 安装目录，或简报串了别的工作区 → 工作目录解析出错，属严重问题，立刻反馈。
 
 ### 场景 3：门禁真的会记账（两个会话，约 5 分钟）
@@ -128,7 +128,7 @@ Earlier sessions edited them and never ran a command, so nothing here is proven 
 ```powershell
 $env:DSH_CODE_GATE_JOURNAL = "$env:TEMP\gate-journal.jsonl"
 Remove-Item $env:DSH_CODE_GATE_JOURNAL -ErrorAction SilentlyContinue
-& 'E:\tools\DSH\DeepSeek Harness.exe'
+& '<install>\DeepSeek Harness.exe'
 ```
 
 3. 在 GUI 里开一个「编程模式」新会话，做**两轮**就够看全：

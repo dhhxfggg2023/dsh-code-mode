@@ -1,7 +1,7 @@
 /**
  * Read source out of the DSH asar bundle.
  *
- * `E:\tools\DSH\resources\app.asar` is a packed archive, so its contents are not
+ * `<install>\resources\app.asar` is a packed archive, so its contents are not
  * readable as files by the editor tools; but the Electron binary resolves paths
  * *through* the archive when run in node mode (fs hooks install asar support).
  *

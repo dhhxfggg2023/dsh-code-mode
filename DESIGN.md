@@ -80,7 +80,7 @@
 ## 7. 协作面
 
 ```
-E:\projects\dsh-code-mode\
+<这个包的 checkout>\
   package.json          私有包；exports 只有 "./lib/*.js"；peerDependencies = schemastery + dsh-llm + dsh-tools
   cordis.patch.yml      preset-code → @deepseek-ai/dsh-agent-preset，config.id: code / order: 5
                         19 段标准子插件 + code-memory 组（8 行），共 42 个嵌套条目

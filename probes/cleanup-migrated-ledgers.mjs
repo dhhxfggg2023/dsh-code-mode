@@ -20,6 +20,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 // The two directories this script deletes inside are owned by the ledger, not by this file.
 // The first version restated them (`DSH_CODE_GLOBAL_DIR ?? ~/.dsh-code`), which was correct
 // until 2026-10-10 moved the home to `~/.dsh/code` and retired `~/.dsh-code`: run without the
@@ -28,27 +29,37 @@ import path from 'node:path';
 // whether the work is done.
 import { globalDir, projectStoreDir } from '../lib/ledger.js';
 
+/** This checkout, so the default plan does not name a path only one machine has. */
+const PKG_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
 const APPLY = process.argv.includes('--apply');
 const KEEP = new Set(['CENTRAL']);
 const LEDGER_NAMES = ['project.json', 'tasks.json', 'decisions.md', 'mistakes.md', 'journal.jsonl'];
 
-/** The projects whose ledgers now live in the store. */
+/**
+ * The projects whose ledgers now live in the store.
+ *
+ * A *plan* for one migration, not a list of machines: `--root <path>` takes its place, and
+ * `--show-roots` prints what the default plan names. The roots are named here because this
+ * script deletes files, and a delete whose scope is computed at runtime cannot be reviewed
+ * before it runs — but on a checkout that has never seen those projects it simply refuses.
+ */
 const MIGRATED = [
-  { root: 'D:\\Android\\project\\BLbox', store: 'BLbox-753a236e' },
-  { root: 'D:\\Android\\project\\PJM', store: 'PJM-99570ac4' },
-  { root: 'E:\\projects\\dsh-code-mode', store: 'dsh-code-mode-56290bea' },
+  { root: '<另外一个项目的目录>', store: '<该项目的 slug>' },
+  { root: '<另外一个项目的目录>', store: '<该项目的 slug>' },
+  { root: path.resolve(PKG_DIR, '..'), store: 'dsh-code-mode-56290bea' },
   { root: 'E:\\tools\\DSH', store: 'DSH-4224eab7' },
 ];
 const STORE = projectStoreDir();
 
 /** Files that are provably redundant: hand-written diagnostics, and superseded backups. */
 const SCRATCH = [
-  'E:\\projects\\dsh-code-mode\\probes\\.diag-store.mjs',
-  'E:\\projects\\dsh-code-mode\\probes\\.diag-self-store.mjs',
-  'E:\\projects\\dsh-code-mode\\probes\\.diag-resolution.mjs',
-  'E:\\projects\\dsh-code-mode\\.dsh-code\\audit-raw.txt',
-  'E:\\projects\\dsh-code-mode\\engine-grep.txt',
-  'E:\\projects\\dsh-code-mode\\asar-list.txt',
+  path.join(PKG_DIR, '.diag-store.mjs'),
+  path.join(PKG_DIR, '.diag-self-store.mjs'),
+  path.join(PKG_DIR, '.diag-resolution.mjs'),
+  path.join(PKG_DIR, '..', '.dsh-code', 'audit-raw.txt'),
+  path.join(PKG_DIR, '..', 'engine-grep.txt'),
+  path.join(PKG_DIR, '..', 'asar-list.txt'),
 ];
 const MACHINE_BAK = ['mistakes.md.bak-applies', 'mistakes.md.bak-dupfix'];
 

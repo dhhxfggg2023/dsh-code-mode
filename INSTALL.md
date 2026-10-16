@@ -33,10 +33,10 @@ mode id = `code`，显示名「编程模式」由 preset 声明自带（内置 l
 
 ## 安装（本机现状 = 已安装）
 
-1. profile manifest `C:\Users\dhhxfggg\.dsh\profiles\desktop\package.json`：
+1. profile manifest `<profile>/package.json`（桌面安装通常是 `~/.dsh/profiles/desktop/package.json`）：
 
    ```json
-   "dependencies": { "dsh-code-mode": "link:E:\\projects\\dsh-code-mode" },
+   "dependencies": { "dsh-code-mode": "link:<这个包的 checkout 绝对路径>" },
    "dsh": { "profile": { "bundles": ["@deepseek-ai/dsh-base", "...", "dsh-code-mode"] } }
    ```
 
@@ -47,16 +47,16 @@ mode id = `code`，显示名「编程模式」由 preset 声明自带（内置 l
    手工兜底（审批不可用时才用）：
 
    ```
-   E:\tools\DSH\resources\runtime\primary-runtime\dependencies\node\bin\node.exe ^
-     E:\tools\DSH\resources\runtime\pnpm\bin\pnpm.cjs install ^
-     --dir C:\Users\dhhxfggg\.dsh\profiles\desktop --reporter append-only
+   <install>\resources\runtime\primary-runtime\dependencies\node\bin\node.exe ^
+     <install>\resources\runtime\pnpm\bin\pnpm.cjs install ^
+     --dir <profile> --reporter append-only
    ```
 
    校验 junction 指向工作区：
 
    ```powershell
-   $i = Get-Item 'C:\Users\dhhxfggg\.dsh\profiles\desktop\node_modules\dsh-code-mode' -Force
-   "$($i.LinkType) -> $($i.Target)"   # 期望 Junction -> E:\projects\dsh-code-mode
+   $i = Get-Item '<profile>\node_modules\dsh-code-mode' -Force
+   "$($i.LinkType) -> $($i.Target)"   # 期望 Junction -> <这个包的 checkout>
    ```
 
    ⚠️ 判空要用 `[string]::IsNullOrEmpty($i.LinkType)`：属性不存在时是 `$null`，`-ne ''` 会把普通目录误判成链接。
@@ -82,10 +82,10 @@ preset 子行的模块在 asar 之外，而 `@deepseek-ai/schemastery`、`@deeps
 排查与修复：
 
 ```powershell
-$i = Get-Item 'C:\Users\dhhxfggg\.dsh\profiles\desktop\node_modules\dsh-code-mode' -Force
+$i = Get-Item '<profile>\node_modules\dsh-code-mode' -Force
 $i.LinkType, $i.Target                                   # 普通目录 = 可疑
-Get-FileHash 'C:\Users\dhhxfggg\.dsh\profiles\desktop\node_modules\dsh-code-mode\lib\ledger.js'
-Get-FileHash 'E:\projects\dsh-code-mode\lib\ledger.js'  # 不一致 = 已确认
+Get-FileHash '<profile>\node_modules\dsh-code-mode\lib\ledger.js'
+Get-FileHash '<这个包的 checkout>\lib\ledger.js'          # 不一致 = 已确认
 ```
 
 manifest 改成 `link:` → 确认路径无误后删掉那份**普通目录**副本 → 在 `profiles\desktop` 重跑 `pnpm install` → 复查 `LinkType` 是 `Junction` 且两边 SHA256 一致。
@@ -117,7 +117,7 @@ code_record({ kind: 'mistake', scope: 'global',
   # ① 带着开关启动（GUI 与这条命令只能活一个；先正常关掉正在跑的 DSH）
   $env:DSH_CODE_GATE_JOURNAL = "$env:TEMP\gate-journal.jsonl"
   Remove-Item $env:DSH_CODE_GATE_JOURNAL -ErrorAction SilentlyContinue   # 从空文件开始
-  & 'E:\tools\DSH\DeepSeek Harness.exe'
+  & '<install>\DeepSeek Harness.exe'
 
   # ② 在 GUI 里开一个「编程模式」的新会话，做一件事就行：
   #    改一个文件 → 不跑命令 → 结束这一轮。想看全三种，再来两轮：

@@ -44,10 +44,12 @@ const ROOTS =
   roots.length > 0
     ? roots
     : [
+        // Where ledgers have actually been seen on the machines this ran on. `--root` widens
+        // it; the list is a default, not a description of any one machine.
         'E:\\projects',
         'D:\\Android\\project',
         'E:\\tools',
-        'C:\\Users\\dhhxfggg\\.astrbot\\data\\plugins',
+        path.join(os.homedir(), '.astrbot', 'data', 'plugins'),
       ];
 
 const SKIP = new Set(['node_modules', '.git', 'dist', 'out', 'build', '.next', 'target', '.venv', 'venv', '__pycache__']);

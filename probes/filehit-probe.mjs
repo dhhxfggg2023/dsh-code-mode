@@ -100,12 +100,13 @@ const refersTo = (target, token) => {
       if (cleaned.length > 0) tokens.push(cleaned);
     }
   }
-  // The exact edits this session's pit notices fired for.
+  // The exact edits this session's pit notices fired for. `PKG_DIR` rather than a literal
+  // package path: a fixture naming this machine's checkout would break on the next clone.
   const edits = [
-    ['E:\\projects\\dsh-code-mode\\lib\\tool-record.js', 'E:\\projects\\dsh-code-mode'],
-    ['E:\\projects\\dsh-code-mode\\lib\\recite.js', 'E:\\projects\\dsh-code-mode'],
-    ['lib/ledger.js', 'E:\\projects\\dsh-code-mode'],
-    ['probes/bug-scan.mjs', 'E:\\projects\\dsh-code-mode'],
+    [path.join(PKG_DIR, 'lib', 'tool-record.js'), PKG_DIR],
+    [path.join(PKG_DIR, 'lib', 'recite.js'), PKG_DIR],
+    ['lib/ledger.js', PKG_DIR],
+    ['probes/bug-scan.mjs', PKG_DIR],
   ];
   const report = edits.map(([edited, cwd]) => {
     const target = editTargetOf(edited, cwd);

@@ -9,7 +9,7 @@
  *
  * Every assertion reads the claim out of the document AND the fact out of the
  * source, then compares. Run in any channel (read-only is enough).
- *   & '<node>' 'E:\tools\DSH\.dsh-probe\debt-audit.mjs'
+ *   & '<node>' '<这个包的 checkout>\probes\debt-audit.mjs'
  */
 import fs from 'node:fs';
 import os from 'node:os';

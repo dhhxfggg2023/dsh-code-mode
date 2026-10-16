@@ -34,6 +34,21 @@ probes/budget-log.txt
 probes/budget-report.json
 probes/budget-report.md
 probes/standard.patch.yml
+# `.dsh-code/` is the per-machine half of the ledger and must not be published.
+#
+# It holds `CENTRAL` (a pointer to the project's ledger directory) plus
+# `audits/` and `reference/` — every path inside them is an absolute path of
+# the machine that produced them, and none of it is in `package.json`
+# `files`, so it is not part of the package anyway. Untracked on 2026-10-16 for
+# publication; the working copy stays on disk, because the running plugin reads
+# `CENTRAL` from it to find where the ledger actually lives.
+.dsh-code/
+
+# One-off diagnostics: by construction they carry absolute paths and nobody
+# references them. Keep one by promoting it to a real probe with a fixture, not
+# by re-tracking it.
+probes/.diag-*.mjs
+
 # `probes/handover-debug-scratch.mjs` used to be listed here as a leftover a confined session
 # could not delete. It was deleted on 2026-10-04 in an unrestricted channel, and an ignore rule
 # for a file that does not exist is a claim about the tree that quietly stops being true. The

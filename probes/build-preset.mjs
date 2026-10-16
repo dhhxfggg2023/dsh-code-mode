@@ -17,8 +17,8 @@
  * The emitted group is derived from the live file's own `code-memory` rows when
  * they exist, so the two halves cannot disagree again.
  *
- *   & '<node>' 'E:\tools\DSH\.dsh-probe\build-preset.mjs' --check
- *   & '<node>' 'E:\tools\DSH\.dsh-probe\build-preset.mjs' --write
+ *   & '<node>' '<这个包的 checkout>\probes\build-preset.mjs' --check
+ *   & '<node>' '<この包的 checkout>\probes\build-preset.mjs' --write
  */
 import fs from 'node:fs';
 import path from 'node:path';

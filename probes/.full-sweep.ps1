@@ -1,9 +1,9 @@
 # Full suite sweep, 2026-10-04 (danger-full-access channel).
 # Written as a file because inline quoted payloads are a recorded pit here.
 # Each group runs top-level (not through debt-audit) so the Electron probes are real runs.
-$node = 'E:\tools\DSH\resources\runtime\primary-runtime\dependencies\node\bin\node.exe'
-$install = 'E:\tools\DSH'
-$P = 'E:\projects\dsh-code-mode\probes'
+$node = '<install>\resources\runtime\primary-runtime\dependencies\node\bin\node.exe'
+$install = '<install>'
+$P = '<这个包的 checkout>\probes'
 $out = Join-Path $env:TEMP 'sweep'
 New-Item -ItemType Directory -Force -Path $out | Out-Null
 

@@ -301,7 +301,7 @@ const crossProject = rows.filter((row) => (row.crossProject ?? []).length > 0);
  * Measured 2026-10-06, while disposing of `crossProjectTriggers` (the task's item 3): the
  * report said `UNREACHABLE, not empty` — "this machine has one ledged project, so a rule can
  * never span two" — and in the same run listed **four** promotion candidates whose two
- * "projects" were `E:\projects\dsh-code-mode` and `E:/projects\dsh-code-mode`. Same directory,
+ * "projects" were one directory spelled two ways. Same directory,
  * two spellings.
  *
  * The cause is structural rather than a typo: `entry.root` is recorded verbatim by whoever
@@ -400,7 +400,7 @@ if (AS_JSON || REPORT_FILE !== undefined) {
   }
   if (spuriousPromotions.length > 0) {
     console.log(
-      `Phantom ${spuriousPromotions.length} promotion(s) collapsed: the raw scan counted two spellings of one root as two projects (measured 2026-10-06: \`E:\\projects\\dsh-code-mode\` and \`E:/projects/dsh-code-mode\`), so \`roots.size > 1\` is satisfiable here *spuriously*. Folded by separator and case before the count. The same fold belongs in \`crossProjectTriggers\` (lib/ledger.js:1242) — until it is there, any caller of that function sees phantoms:`,
+      `Phantom ${spuriousPromotions.length} promotion(s) collapsed: the raw scan counted two spellings of one root as two projects (measured 2026-10-06 on a Windows checkout: one path with a backslash and the same path with a forward slash), so \`roots.size > 1\` is satisfiable here *spuriously*. Folded by separator and case before the count. The same fold belongs in \`crossProjectTriggers\` (lib/ledger.js:1242) — until it is there, any caller of that function sees phantoms:`,
     );
     for (const rule of spuriousPromotions) {
       console.log(`  PHANTOM ${rule.heading} — ${rule.roots.join(' == ')}`);
