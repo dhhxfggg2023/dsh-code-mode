@@ -114,18 +114,21 @@ if (rows.length > 0) {
  * so "disk ≠ last sent" means a restart will change the prefix.
  */
 const MARK_A = '## Project ledger';
-const MARK_B = '## Working habits';
-const sectionIn = (text) => {
-  const from = text.indexOf(MARK_A);
-  const to = text.indexOf(MARK_B, from + 1);
-  return from < 0 || to < 0 ? undefined : text.slice(from, to);
-};
-/** The first string inside a frame that carries the whole section, newest frame first. */
-const sectionTextOf = (value) => {
-  if (typeof value === 'string') return sectionIn(value) === undefined ? undefined : sectionIn(value);
+/**
+ * The whole string inside a frame that carries the code-ledger section.
+ *
+ * This used to return the slice from `## Project ledger` to `## Working habits` — and that bound
+ * was a blind spot with a price. On 2026-10-11 a bullet was appended to the END of the Working
+ * habits list, i.e. *after* the bound, and this probe went on printing "live == sent — cache-safe"
+ * while the prefix had in fact changed: precisely the outcome it exists to warn about, silent
+ * exactly when it mattered. The comparison is now a containment test against the whole carrier,
+ * so a line added anywhere in the section is visible.
+ */
+const carrierOf = (value) => {
+  if (typeof value === 'string') return value.includes(MARK_A) ? value : undefined;
   if (value === null || typeof value !== 'object') return undefined;
   for (const child of Object.values(value)) {
-    const hit = sectionTextOf(child);
+    const hit = carrierOf(child);
     if (hit !== undefined) return hit;
   }
   return undefined;
@@ -142,7 +145,7 @@ let sentAt;
 // `## Project ledger` was an assistant message, and a tool argument matched too).
 for (let index = frames.length - 1; index >= 0 && sent === undefined; index -= 1) {
   if (frames[index].type !== 'system/message') continue;
-  const hit = sectionTextOf(frames[index].data);
+  const hit = carrierOf(frames[index].data);
   if (hit !== undefined) {
     sent = hit;
     sentAt = frames[index].time;
@@ -152,7 +155,7 @@ let live;
 try {
   // The section is a static template literal; the only escapes in it are backticks.
   const literal = /const SECTION = `([\s\S]*?)`;\n/.exec(fs.readFileSync(promptFile, 'utf8'))?.[1];
-  live = literal === undefined ? undefined : sectionIn(literal.replace(/\\`/g, '`'));
+  live = literal === undefined ? undefined : literal.replace(/\\`/g, '`');
 } catch {
   live = undefined;
 }
@@ -163,14 +166,14 @@ if (live === undefined || sent === undefined) {
     `prefix text: could not compare (live=${live === undefined ? 'not found' : sha(live)}, sent=${sent === undefined ? 'not found' : sha(sent)})` +
       ' — one side is missing, so say so rather than implying the prefix is unchanged',
   );
-} else if (live === sent) {
+} else if (sent.includes(live)) {
   console.log(
     `prefix text: live ${path.relative(PKG_DIR, promptFile)} == the system prompt last sent (${at(sentAt)}, ${live.length} chars, sha ${sha(live)}) — cache-safe`,
   );
 } else {
   console.log(
     `prefix text: LIVE DIFFERS from the system prompt last sent (live ${live.length} chars sha ${sha(live)}` +
-      ` vs sent ${sent.length} chars sha ${sha(sent)}, sent ${at(sentAt)})`,
+      ` is not contained in the sent carrier, ${sent.length} chars, sent ${at(sentAt)})`,
   );
   console.log(
     '  The running host still sends the OLD text. After the next restart the prefix changes, and any\n' +

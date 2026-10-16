@@ -103,7 +103,7 @@ const refersTo = (target, token) => {
   // The exact edits this session's pit notices fired for.
   const edits = [
     ['E:\\projects\\dsh-code-mode\\lib\\tool-record.js', 'E:\\projects\\dsh-code-mode'],
-    ['E:\\projects\\dsh-code-mode\\lib\\compact-gate.js', 'E:\\projects\\dsh-code-mode'],
+    ['E:\\projects\\dsh-code-mode\\lib\\recite.js', 'E:\\projects\\dsh-code-mode'],
     ['lib/ledger.js', 'E:\\projects\\dsh-code-mode'],
     ['probes/bug-scan.mjs', 'E:\\projects\\dsh-code-mode'],
   ];

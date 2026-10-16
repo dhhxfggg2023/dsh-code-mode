@@ -77,7 +77,7 @@ try {
       symptom: 'a short pit with a coordinate',
       cause: 'cause',
       fix: 'fix',
-      files: 'lib/compact-gate.js:1',
+      files: 'lib/recite.js:1',
       avoid: 'do not X because Y',
     },
     SESSION,

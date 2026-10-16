@@ -18,29 +18,26 @@ $P = '<pkg>\probes'     # 本机是 E:\projects\dsh-code-mode\probes
 & '<node>' "$P\debt-audit.mjs"               # 文档断言 vs 代码事实       期望 passed 23/23
 & '<node>' "$P\check-yaml.mjs"               # 打印 preset 行与子行
 & '<node>' "$P\check-prompt-section.mjs"     # 提示段真的进了请求         期望 PASS
-& '<node>' "$P\gate-chance.mjs"              # 闸门到底有没有机会响（读真实会话日志，报告）
-& '<node>' "$P\session-evidence.mjs"         # 会话取证：帧类型/token/窗口/压缩/闸门痕迹（报告）
+& '<node>' "$P\session-evidence.mjs"         # 会话取证：帧类型/token/窗口/压缩帧（报告）
 & '<node>' "$P\brief-shape.mjs"              # 真实账本下简报花了多少：完整条目 / 索引行 / 发现提示（报告）
 & '<node>' "$P\index-diag.mjs"               # 不同 maxChars 下索引行数（报告）
 & '<node>' "$P\ledger-census.mjs"            # 两个账本的条数/字符/索引成本（报告）
 & '<node>' "$P\pit-liveness.mjs"             # 坑的存活：trigger 能否编译+自证命中、files: 是否还在（判红）
-& '<node>' "$P\handover-grant-probe.mjs"     # 转接文档的 margin 与提醒再武装      期望 12/12
 & '<node>' "$P\journal-rotation-probe.mjs"   # journal 轮转：不丢行、最高槽被占也要继续转  期望 5/5
 & '<node>' "$P\write-rule-probe.mjs"         # 写入侧告警 + 命中记账 + 重启追踪        期望 12/12
 & '<node>' "$P\brief-full-probe.mjs"         # code_brief({full:true}) 让更多条目可达 期望 4/4
 & '<node>' "$P\promotion-probe.mjs"          # 跨项目晋升：两项目才算候选          期望 6/6
 & '<node>' "$P\pattern-budget-probe.mjs"     # 坑的正则必须有界（判据必须让边界真的响）  期望 17/17
 & '<node>' "$P\repeat-identity-probe.mjs"    # 坑的身份：真重复仍合并、不同坑不再合并      期望 17/17
-& '<node>' "$P\syntax-check.mjs"             # lib/ 与探针的 ESM 解析（补 node --check 的假证据）期望 14/14
-& '<node>' "$P\utf8-check.mjs"               # 本轮改动文件的严格 UTF-8              期望 18/18
-& '<node>' "$P\handover-derive-probe.mjs"    # 转接派生：只从账本派生、有界、只读        期望 19/19
+& '<node>' "$P\syntax-check.mjs"             # lib/ 与探针的 ESM 解析（补 node --check 的假证据）期望 15/15（**必须带 `--experimental-vm-modules`**）
+& '<node>' "$P\utf8-check.mjs"               # 本轮改动文件的严格 UTF-8              期望 16/16
+& '<node>' "$P\handover-derive-probe.mjs"    # 转接派生：只从账本派生、有界、只读        期望 21/21
 & '<node>' "$P\effect-audit-probe.mjs"      # 效果审计：机制到底有没有产生过价值          期望 8/8
 & '<node>' "$P\cross-project-reach-probe.mjs"  # 晋升 verdict 两分支都真的跑过（幽灵根折叠）  期望 5/5
 
 # 需要 Electron 二进制（从 asar 加载宿主解析）
 $env:ELECTRON_RUN_AS_NODE='1'
 & '<install>\DeepSeek Harness.exe' --expose-internals "$P\acceptance-probe.mjs"     # 期望 24/24
-& '<install>\DeepSeek Harness.exe' --expose-internals "$P\compact-gate-probe.mjs"    # 期望 35/35
 & '<install>\DeepSeek Harness.exe' --expose-internals "$P\budget-probe.mjs"         # 期望 29/29
 & '<install>\DeepSeek Harness.exe' --expose-internals "$P\budget-chain-probe.mjs"   # 期望 16/16
 & '<install>\DeepSeek Harness.exe' --expose-internals "$P\gate-probe.mjs"           # 期望 39/39

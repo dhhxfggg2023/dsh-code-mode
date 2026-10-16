@@ -1,18 +1,21 @@
 /**
- * Compaction forensics: why did the engine compact while `code-compact-gate` was mounted?
+ * Compaction forensics: why did the engine compact, and what did it keep?
  *
- * The user report (2026-10-10) is not "the card was ignored" but "the gate never stopped
- * the engine; compaction happened silently and I lost the context". `session-evidence.mjs`
- * can say *that* it happened (one session compacted post-mount with a peak of 68%), but
- * not *which* of the gate's three release paths released the step. This probe prints the
- * raw frames around the moment, because the answer is in numbers the stubs never see:
+ * The user report (2026-10-10) was not "the card was ignored" but "the engine compacted
+ * silently and I lost the context". `session-evidence.mjs` can say *that* it happened (one
+ * session compacted with a peak of 68%), but not *which* path released the step. This probe
+ * prints the raw frames around the moment, because the answer is in numbers the stubs never
+ * see:
  *
  *   - `request/context.data.contextWindow` — the window the host resolved;
- *   - the usage counters on `assistant/message`/`step/end` — the occupancy the gate's
- *     `tokenMeter.measure()` would have compared against `gateRatio * contextWindow`;
- *   - every frame whose `message.source.kind === 'code-compact-gate'` — whether the gate
- *     warned, asked, or said nothing at all;
+ *   - the usage counters on `assistant/message`/`step/end` — the occupancy that would have
+ *     been compared against a threshold;
  *   - every `compaction/*` frame — what the engine did and what it kept.
+ *
+ * It was written while a compaction gate existed and also counted frames whose
+ * `message.source.kind === 'code-compact-gate'`; that gate was deleted on 2026-10-11, so the
+ * gate-trace column was removed with it. What is left is the engine half, which is *more*
+ * relevant now that the engine compacts on its own again.
  *
  * Read-only by construction: it opens logs, decodes them, writes only to stdout.
  *
@@ -108,7 +111,6 @@ for (const file of targets) {
     continue;
   }
   const compactions = [];
-  const gate = [];
   const windows = [];
   let biggest = 0;
   let biggestAt = undefined;
@@ -117,10 +119,6 @@ for (const file of targets) {
     const data = frame?.data ?? {};
     if (/^compaction/.test(type) || /(^|[/-])(compaction|summar)/i.test(type)) {
       compactions.push({ index, type, at: Number(frame?.time), data });
-    }
-    const sourceKind = data?.message?.source?.kind ?? data?.source?.kind;
-    if (sourceKind === 'code-compact-gate') {
-      gate.push({ index, type, at: Number(frame?.time), data });
     }
     if (type === 'request/context') windows.push({ index, window: Number(data?.contextWindow) });
     const counters = data?.usage ?? data?.message?.usage ?? data?.result?.usage;
@@ -138,11 +136,8 @@ for (const file of targets) {
     biggestPrompt: biggest,
     biggestAt,
     compactions: compactions.length,
-    compactionsPostMount: post.length,
+    compactionsSinceCutover: post.length,
     compactionTypes: [...new Set(compactions.map((hit) => hit.type))],
-    gate: gate.length,
-    gateAt: gate.map((hit) => ({ index: hit.index, type: hit.type, at: hit.at })),
-    gateSamples: gate.slice(0, 2).map((hit) => JSON.stringify(hit.data).slice(0, 700)),
     around: AROUND > 0 ? all.slice(Math.max(0, AROUND - WINDOW), AROUND + WINDOW).map(({ index, frame }) => ({ index, type: frame?.type, line: JSON.stringify(frame).slice(0, 900) })) : undefined,
     /**
      * `--from N --to M` prints a slice verbatim. This is the flag that answers "what was
@@ -156,7 +151,7 @@ for (const file of targets) {
   });
 }
 
-const interesting = report.filter((item) => item.compactionsPostMount > 0 || item.gate > 0);
+const interesting = report.filter((item) => item.compactionsSinceCutover > 0);
 const payload = JSON.stringify(args.includes('--list') ? interesting : report, null, 1);
 /**
  * `--out <file>` writes UTF-8 from node.

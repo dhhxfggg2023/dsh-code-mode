@@ -83,16 +83,17 @@
 E:\projects\dsh-code-mode\
   package.json          私有包；exports 只有 "./lib/*.js"；peerDependencies = schemastery + dsh-llm + dsh-tools
   cordis.patch.yml      preset-code → @deepseek-ai/dsh-agent-preset，config.id: code / order: 5
-                        19 段标准子插件 + code-memory 组（7 行），共 42 个嵌套条目
-                        （其中一行本项目的 code-compact-gate 挂在内置 compaction 组里、
-                          排在 compaction-basic 之前，才能先于自动压缩发问）
-  lib/prompt.js         提示段 code-ledger（order -50）：账本协议 + Working habits 六条
+                        19 段标准子插件 + code-memory 组（8 行），共 42 个嵌套条目
+                        （内置 compaction 组里**没有**本项目的行：code-compact-gate
+                          2026-10-11 连同它的模块一起删了）
+  lib/prompt.js         提示段 code-ledger（order -50）：账本协议 + Working habits 八条
   lib/tool-brief.js     code_brief（按段分配预算，省略必告知）
   lib/tool-record.js    code_record（五种 kind；done 需证据）
   lib/tool-verify.js    code_verify（走 ctx.shell，套用会话 sandbox policy）
   lib/gate-verify.js    code-gate（只有 code_verify 算留下证据；`state:none/ran` 落债、`state:proved` 静默收尾；`DSH_CODE_GATE_JOURNAL` 可把真实会话里的每个决定写成 JSONL）
   lib/pit-guard.js      code-pit-guard（坑的读取侧：动手前提已有坑（files: / trigger:）、两账本都查；失败未记录落债）
   lib/budget.js         code-budget（事前拦大读；事后裁兜底）
+  lib/recite.js         code-recite（每 6 步把 tasks.json 的在飞任务重述一遍，只读任务板）
   lib/ledger.js         账本纯库（无 loader 导出，不能作为 plugin 行注册）；项目 + 机器两个 scope
   probes/               判据集（见 probes/README.md）
   INSTALL.md            安装 / 坑 / 门禁现状 / 扩展新工具

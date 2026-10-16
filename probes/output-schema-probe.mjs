@@ -22,7 +22,7 @@
  * harness actually validates. Every tool registered by `lib/tool-*.js` is checked, so a
  * future tool with an undeclared key fails here instead of in a live session.
  *
- * Plain node with the two host imports stubbed (the `handover-grant-probe.mjs`
+ * Plain node with the two host imports stubbed (the `pit-fire-probe.mjs`
  * technique), so it runs in a confined channel where the Electron probes cannot.
  */
 import fs from 'node:fs';

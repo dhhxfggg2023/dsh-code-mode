@@ -5,9 +5,8 @@
  * answers "is the mechanism doing what I said it does". None answered "did it produce
  * value". The starting readings that made that a gap rather than a philosophy:
  * 37/67 command-side `trigger:` entries have never been hit, 33/79 file-side ones have
- * never matched an edit, the cross-project promotion yield is 0, `compact-gate` has never
- * crossed its real line in a `code`-preset session, and 3 `files:` pointers name files
- * that no longer exist. The project's own working habit says it plainly — *a green
+ * never matched an edit, the cross-project promotion yield is 0, and 3 `files:` pointers
+ * name files that no longer exist. The project's own working habit says it plainly — *a green
  * harness is not a green product* — and it had applied that rule to its tools and never
  * to itself.
  *

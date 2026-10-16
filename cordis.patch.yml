@@ -74,29 +74,47 @@
               compaction: true
               toolResultPruner: true
             config:
-              # The gate is deliberately the first row of this group: `agent/pre-step`
-              # is a waterfall in registration order, and the engine below compacts
-              # from the same event. Registered here, the gate answers *before* the
-              # engine decides, which is the whole point — a row anywhere after
-              # `compaction-basic` would be asked after the context was already
-              # summarised. It compacts nothing itself: "compact now" is the engine
-              # below doing what it would have done, and every failure to ask (no
-              # answerer, a dead UI, a timeout) falls through to it.
-              - id: code-compact-gate
-                name: 'dsh-code-mode/lib/compact-gate.js'
-                # Ratios, not defaults: measured 2026-10-03 over 90 recorded sessions,
-                # every one of them resolved a 1,000,000-token window, and the biggest
-                # prompt ever recorded was 798,563 tokens — 79.86%. The library default
-                # of 0.8 therefore sat *above* what real sessions reach: 28 sessions
-                # peaked in the 75-80% band, none crossed the line, and the gate had
-                # never once been asked. A guard placed above the ceiling of real work
-                # is not a guard. 0.75 puts it inside that band; 0.6 keeps the warning
-                # a full 15 points ahead of the question it is warning about.
-                config:
-                  warnRatio: 0.6
-                  gateRatio: 0.75
+              # 2026-10-11: **the gate is gone.** `code-compact-gate` (and `lib/compact-gate.js`)
+              # was deleted at the user's instruction — "压缩闸门删了，无需再问，只要跟账本有关的".
+              # Compaction is a feature of the harness, and this preset no longer has an opinion
+              # about *when* it happens.
+              #
+              # What that gives up, on purpose: the gate used to (a) hold the step and ask, (b)
+              # reset the session from the ledger's own handover *ahead* of the engine's own line,
+              # (c) prune oversized tool results from 50% occupancy, and (d) tell a session that had
+              # just been compacted to re-read the ledger. (b) and (d) existed to make the reset
+              # cheap and visible; with the gate gone the engine's own path does both, and (c) is
+              # back where it was before the gate: the pruner is invoked from inside the engine's
+              # compaction path (see the `auto` key below — that path is registered again).
+              #
+              # The recitation that used to live in the gate's file did **not** go with it: it is a
+              # ledger feature and it moved to `lib/recite.js`, mounted in the `code-memory` group.
               - id: compaction-basic
-                name: '@deepseek-ai/dsh-compaction-basic'
+                name: 'dsh-code-mode/lib/compact-summary.js'
+                config:
+                  # 2026-10-11: **automatic compaction is ON again, and this key is what says so.**
+                  # It was `false` from 2026-10-10, and that switch was enforced in the module's
+                  # constructor rather than here, because this row's id is the id *every* preset
+                  # uses and the profile patch is a global layer — a `false` written there silenced
+                  # standard/ptc/minimal too (measured). The user withdrew the instruction that
+                  # made the force necessary ("自动压缩本来就有，只不过之前我关了，这条路我觉得不对"),
+                  # so the module stopped overriding `auto` and the value is configuration's again.
+                  # Forcing `false` in the module now would be the same defect inverted: a
+                  # declaration on this row that nothing enforces.
+                  #
+                  # What the engine does with it: `if (this.config.auto) this._registerAutomaticCompaction();`
+                  # registers **both** automatic paths — the between-step pressure compaction and the
+                  # context-overflow recovery. With it off, a request that finally exceeds the window
+                  # fails with the provider's context-window error instead of being recovered.
+                  #
+                  # The checkpoint itself is still ours and still calls **no model**: this row mounts
+                  # `lib/compact-summary.js`, whose `summarize()` returns the ledger-derived handover
+                  # (see `lib/ledger.js`'s `handover()`). The 2026-10-10 ban on handing a whole
+                  # conversation to a model to be compressed in one shot stands — it was a separate
+                  # instruction, and it is not what was withdrawn. `DSH_CODE_MODEL_COMPACTION=allow`
+                  # remains the break-glass, and is the only path in this preset that reaches the
+                  # engine's own summarizer.
+                  auto: true
               - id: command-compact
                 name: '@deepseek-ai/dsh-command-compact'
               - id: tool-result-pruner
@@ -178,6 +196,14 @@
               # turn records nothing.
               - id: code-pit-guard
                 name: 'dsh-code-mode/lib/pit-guard.js'
+              # The board, re-stated into the conversation every few steps. It reads
+              # `tasks.json` and nothing else — not the conversation, not the journal — so it
+              # cannot invent a narrative; the worst it can do is be stale, and it says so.
+              # It lived in the compaction gate's file until 2026-10-11, on no better reason
+              # than that the gate already held a step hook; it has nothing to do with
+              # compaction. `reciteEverySteps: 0` switches it off.
+              - id: code-recite
+                name: 'dsh-code-mode/lib/recite.js'
           - id: tool-ask-user
             name: '@deepseek-ai/dsh-tool-ask-user'
           - id: tool-todo

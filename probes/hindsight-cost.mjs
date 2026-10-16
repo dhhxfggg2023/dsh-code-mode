@@ -22,8 +22,8 @@
  * separately rather than blended in (this session discusses Hindsight constantly, so a
  * bare word count would prove nothing).
  *
- * Decoding is copied from `gate-chance.mjs` (`zlib.zstdDecompressSync` over concatenated
- * frames, magic `28 b5 2f fd`); `session-evidence.mjs`'s decoder is private, and a probe
+ * Decoding follows `session-evidence.mjs` (`zlib.zstdDecompressSync` over concatenated
+ * frames, magic `28 b5 2f fd`); its decoder is private, and a probe
  * that guessed at an export already failed once.
  */
 import fs from 'node:fs';

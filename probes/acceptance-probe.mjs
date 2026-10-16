@@ -32,7 +32,7 @@ const MODULES = [
   'lib/gate-verify.js',
   'lib/budget.js',
   'lib/pit-guard.js',
-  'lib/compact-gate.js',
+  'lib/recite.js',
 ];
 // `DSH_PROBE_REPORT` lets a parent that cannot capture this process's stdout still read
 // the verdict — the same override `budget-chain-probe.mjs` already offers. `debt-audit.mjs`

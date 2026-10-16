@@ -48,7 +48,7 @@ const files = [
  * `^- <label>: (.*)$`, so after the parser was widened to accept the full-width spellings
  * the probe went on reporting `IGNORED` for every real line — it was measuring its own copy
  * of the regex, not the guard's. A reader that carries its own copy of the rule it is
- * checking cannot report that the rule changed. (Same defect as `gate-chance.mjs` hardcoding
+ * checking cannot report that the rule changed. (Same defect as a probe that hardcoded
  * the gate ratios while `cordis.patch.yml` declared different ones — the plan calls it out in
  * §9, and this is the second occurrence.)
  */

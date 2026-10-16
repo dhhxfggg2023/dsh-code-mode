@@ -17,7 +17,7 @@ $summary = { param($name, $code, $text)
 # --- node probes that honour DSH_PROBE_REPORT ---------------------------------------
 foreach ($n in @('guard-probe','pit-fire-probe','filehit-probe','output-schema-probe','audit-verify-probe',
                  'write-rule-probe','journal-rotation-probe','brief-full-probe','promotion-probe',
-                 'handover-grant-probe','audit-child-env-probe')) {
+                 'audit-child-env-probe')) {
   $report = Join-Path $out "$n.json"
   Remove-Item Env:DSH_PROBE_REPORT -ErrorAction SilentlyContinue
   $env:DSH_PROBE_REPORT = $report
@@ -48,7 +48,7 @@ foreach ($pair in @(@('syntax-check','--experimental-vm-modules'), @('utf8-check
 
 # --- Electron probes (top-level, each with its own report) --------------------------
 $env:ELECTRON_RUN_AS_NODE = '1'
-foreach ($n in @('acceptance-probe','compact-gate-probe','budget-probe','budget-chain-probe',
+foreach ($n in @('acceptance-probe','budget-probe','budget-chain-probe',
                  'gate-probe','gate-journal-probe','pit-guard-probe','aegis-activation-probe')) {
   $report = Join-Path $out "$n.json"
   $env:DSH_PROBE_REPORT = $report

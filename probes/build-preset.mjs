@@ -97,7 +97,7 @@ function check() {
       !(
         key(r) === "preset-code | '@deepseek-ai/dsh-agent-preset' | " ||
         key(r) === 'code-memory | cordis:group | ' ||
-        /^code-(prompt|brief|record|verify|gate|budget|pit-guard|compact-gate) \| 'dsh-code-mode\/lib\//.test(key(r))
+        /^code-(prompt|brief|record|verify|gate|budget|pit-guard|recite) \| 'dsh-code-mode\/lib\//.test(key(r))
       ),
   );
   // Every intentional difference must actually be present, or the reason is stale.

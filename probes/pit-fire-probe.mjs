@@ -16,7 +16,7 @@
  * that is written but never appears is a silent failure of exactly the kind this mode is
  * built to prevent, and the project's own probe (`pit-guard-probe.mjs`) does not ask.
  *
- * Plain node with the two host imports stubbed, the way `handover-grant-probe.mjs` does
+ * Plain node with the two host imports stubbed, the way `output-schema-probe.mjs` does
  * it; it needs no Electron, so it runs in a confined channel.
  */
 import fs from 'node:fs';
@@ -62,7 +62,7 @@ const readField = (block, labels) => {
   return undefined;
 };
 
-/** Chainable stand-in for schemastery, as `handover-grant-probe.mjs` uses. */
+/** Chainable stand-in for schemastery, as `no-model-compaction-probe.mjs` uses. */
 function chainable(keys = undefined) {
   const target = function () {};
   return new Proxy(target, {

@@ -73,9 +73,8 @@ const groupFiles = groupRows.map((r) => r.name);
  *
  * `groupRows` above is scoped to the `code-memory` slice because the documents
  * quote *that* group's size. But this mode also mounts one row of its own inside
- * a built-in group — `code-compact-gate`, a child of `compaction` and deliberately
- * ordered before `compaction-basic` so its `agent/pre-step` handler runs first.
- * A check that only looked at the code-memory slice reported that module as
+ * a built-in group — `compaction-basic`, a child of `compaction`. A check that only
+ * looked at the code-memory slice reported that module as
  * "registered nowhere" (measured 2026-10-02, P1), so "is this file a plugin row?"
  * is asked against the whole preset, not one group.
  */
@@ -324,26 +323,24 @@ check('E1', 'every shipped text file is valid UTF-8 (no lossy-encode damage)', u
 // the report is read and compared by its own timestamp.
 //
 // KNOWN GAP, CLOSED 2026-10-03: the Electron probes used to be covered by nothing —
-// this audit ran `guard-probe.mjs` only, so `acceptance-probe.mjs` (24), `compact-gate-probe.mjs`
-// (32) and `pit-guard-probe.mjs` (24) were numbers kept in sync by hand. That is exactly how
+// this audit ran `guard-probe.mjs` only, so `acceptance-probe.mjs` (24) and
+// `pit-guard-probe.mjs` (24) were numbers kept in sync by hand. That is exactly how
 // the 30 -> 32 edit happened by hand earlier that day, and how a real regression in
 // `tool-record.js` (a `ReferenceError` that made `code_record` unable to render a mistake)
 // stayed invisible: acceptance was quoted as 24/24 while it was really 22/24.
 //
 // They are now *run*, not trusted. Each probe is here because it satisfies both halves:
 // it loads the host's module resolution from the asar without needing a desktop window,
-// and it is hermetic once `DSH_CODE_GLOBAL_DIR` points at a scratch dir — verified for all
-// three before wiring (24/24, 32/32, 24/24 under redirect, ~1.1s each). `HARNESS_EXE` is
+// and it is hermetic once `DSH_CODE_GLOBAL_DIR` points at a scratch dir — verified before
+// wiring (24/24, 24/24 under redirect, ~1.1s each). `HARNESS_EXE` is
 // required; where it is missing (a machine without the harness, a channel that refuses to
 // spawn) every Electron probe is recorded as `unavailable` — a state R5 names on its face,
 // never a pass.
-const ELECTRON_RUNNABLE = ['acceptance-probe.mjs', 'compact-gate-probe.mjs', 'pit-guard-probe.mjs'];
-// `handover-grant-probe.mjs` is here rather than above because it stubs the two host
-// imports instead of loading resolution from the asar, so plain Node can run it — which
-// is the whole reason it exists: `compact-gate-probe.mjs` needs the Electron binary, and
-// a confined session channel cannot start that binary at all (measured 2026-10-03: no
-// output, empty `$LASTEXITCODE`). It measures by execution the two things that changed
-// in the handover branch, where the full probe cannot reach.
+const ELECTRON_RUNNABLE = ['acceptance-probe.mjs', 'pit-guard-probe.mjs'];
+// `handover-grant-probe.mjs` was here until 2026-10-11, when the compaction gate it drove
+// (`lib/compact-gate.js`) was deleted with the gate itself. It existed for one reason: it
+// stubs the two host imports instead of loading resolution from the asar, so plain Node could
+// run it where `compact-gate-probe.mjs` could not — and both of those probes are gone now.
 //
 // The three ledger probes are here for a different reason: they import `lib/ledger.js`
 // directly (it has no bare imports), so they can assert journal rotation, the write-side
@@ -354,7 +351,6 @@ const ELECTRON_RUNNABLE = ['acceptance-probe.mjs', 'compact-gate-probe.mjs', 'pi
 // next. It is run directly, and it is the guard for how this list's verdicts are read.
 const RUNNABLE = [
   'guard-probe.mjs',
-  'handover-grant-probe.mjs',
   'journal-rotation-probe.mjs',
   'write-rule-probe.mjs',
   'brief-full-probe.mjs',
@@ -434,8 +430,8 @@ for (const file of ELECTRON_RUNNABLE) {
   let summary;
   try {
     const raw = JSON.parse(fs.readFileSync(reportFile, 'utf8'));
-    // Two report shapes exist among the probes: a flat `{passed,total,failed}` and
-    // `compact-gate-probe`'s `{summary:{...}}`. Read both rather than reshaping a probe
+    // Two report shapes exist among the probes: a flat `{passed,total,failed}` and a
+    // nested `{summary:{...}}`. Read both rather than reshaping a probe
     // to satisfy a reader.
     summary = raw.summary === undefined ? raw : { ...raw.summary };
   } catch {

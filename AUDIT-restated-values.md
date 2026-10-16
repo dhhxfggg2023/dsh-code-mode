@@ -1,5 +1,7 @@
 # Audit: values restated at the point of use (2026-10-10)
 
+> **2026-10-11 状态注**：`lib/compact-gate.js`、`lib/compact-policy.js` 与 5 条闸门探针（`compact-gate-probe.mjs`、`gate-ahead-of-engine.mjs`、`gate-live-line.mjs`、`gate-chance.mjs`、`handover-grant-probe.mjs`）已随压缩闸门一起删除，所以下文中**点名这些文件的条目作废**（§(b) 的 `compact-policy` 两条与 `gate-live-line`/`handover-grant`/`gate-chance` 那条、§(c) 的 `compact-gate.js:59,62` 与 `gate-live-line.mjs:191-192`、以及 §「Not a finding」整节）。**其余条目仍然有效**，并且这份审计的**方法**没变：一份值被写在用到它的地方、而不是在那里解析，于是它描述的东西搬走之后副本还在照常工作。`ENGINE_THRESHOLD_RATIO`/`ENGINE_HEADROOM_TOKENS` 那两个镜像常数**仍在** `lib/compaction.js` 里（折叠定价需要它们），所以那条"没有任何东西检测引擎升级"的缺口也还在。
+
 Produced by a read-only inventory over `lib/`, `probes/` and `cordis.patch.yml`, after two of
 the same shape were found and fixed by hand. The shape is: **a value is written down where it is
 used instead of being resolved there**, so the copy keeps working while the thing it describes

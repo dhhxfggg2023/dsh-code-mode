@@ -669,15 +669,20 @@ check(
    * current session was the *first* one seen, nothing was classified as older, and `N8`/`N8b`
    * failed while the rule they test behaved correctly (measured 2026-10-10).
    *
-   * Their timestamps are fixed and later than every record `buildRich` writes, so none of those
-   * mistakes counts as "a mistake recorded after this one" — each debt stays a plain unsettled
-   * failure, which is what `## Next` is supposed to lead with.
+   * Their timestamps are **relative to now and in the future**, so none of those mistakes counts as
+   * "a mistake recorded after this one" — each debt stays a plain unsettled failure, which is what
+   * `## Next` is supposed to lead with. They used to be the fixed date `2026-10-11`, which was
+   * genuinely in the future when this was written and became the past soon after: from then on
+   * `buildRich`'s records were "later" than every debt, all three were demoted to the counted line,
+   * and `N8`/`N8b` failed while the rule they test behaved correctly (measured 2026-10-16). A
+   * fixture that hardcodes a future date is a check with an expiry date.
    */
   fs.mkdirSync(path.join(multiDir, '.dsh-code'), { recursive: true });
+  const ahead = (seconds) => new Date(Date.now() + seconds * 1000).toISOString();
   const debts = [
-    { session: 'sess-oldest', ts: '2026-10-11T00:00:01.000Z', cmd: 'node probes/OLDEST-nobody-wrote-this.mjs' },
-    { session: 'sess-middle', ts: '2026-10-11T00:00:02.000Z', cmd: 'node probes/MIDDLE-nobody-wrote-this.mjs' },
-    { session: 'sess-newest', ts: '2026-10-11T00:00:03.000Z', cmd: 'node probes/NEWEST-nobody-wrote-this.mjs' },
+    { session: 'sess-oldest', ts: ahead(60), cmd: 'node probes/OLDEST-nobody-wrote-this.mjs' },
+    { session: 'sess-middle', ts: ahead(120), cmd: 'node probes/MIDDLE-nobody-wrote-this.mjs' },
+    { session: 'sess-newest', ts: ahead(180), cmd: 'node probes/NEWEST-nobody-wrote-this.mjs' },
   ];
   for (const debt of debts) {
     appendJournal(multiDir, {

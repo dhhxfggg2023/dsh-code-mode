@@ -1,15 +1,18 @@
 /**
  * Session evidence: what really happened in recorded sessions.
  *
- * Written 2026-10-03 because the compaction gate (`lib/compact-gate.js`) had 30/30
- * probe checks and a user report of "it never fired in practice". Every one of those
- * checks drives a stub or reads the preset text; none of them reads a session that a
- * human actually ran. R2/R4 in particular compare `preset.indexOf('id: code-compact-gate')`
- * with `preset.indexOf('id: compaction-basic')` — the order of two lines in a file, not
- * the order two handlers are called at runtime.
+ * Written 2026-10-03 to answer a question no stub could: every compaction check this
+ * package had drove a stub or read the preset text, and **none of them read a session a
+ * human actually ran**. A real log is the only place that shows the window the host
+ * resolved, the occupancy that followed, and whether the engine ever compacted.
  *
- * This probe answers the question the stubs cannot: in a real session, did the engine
- * compact, and did the gate leave any trace before it did?
+ * It was written while a compaction gate (`lib/compact-gate.js`) existed and its first
+ * question was "did the gate leave a trace before the engine compacted". That gate and its
+ * row were deleted on 2026-10-11 — compaction is the harness's feature and this preset no
+ * longer has an opinion about when it happens — so the gate-trace half of this probe was
+ * removed with it. What is left is the half that outlived the gate and is *more* relevant
+ * now that the engine compacts on its own again: the frames, the counters, the resolved
+ * windows, the occupancy they imply, and every `compaction/*` frame.
  *
  * Usage:
  *   node probes/session-evidence.mjs                 # every project dir, newest 3 logs each
@@ -33,19 +36,19 @@ const ONLY_DIR = flag('--dir');
 const ONLY_PATH = flag('--path');
 const PER_DIR = ALL ? Number.POSITIVE_INFINITY : 3;
 /**
- * Only compactions at or after this instant are evidence about the gate: a session
- * that compacted before the gate was mounted says nothing about whether the gate
- * runs, and counting those would be the same mistake as the stub-only probe.
- * Default is the moment `code-compact-gate` first landed in `cordis.patch.yml`.
+ * Only compactions at or after this instant are counted as "after the cutover": a session
+ * that compacted before it says nothing about the mode as it is configured today.
+ * Default is the moment this preset's compaction wiring was first mounted.
  */
 const SINCE = Date.parse(flag('--since') ?? '2026-10-02T14:49:00Z');
 /**
  * `--dump <type>` prints the first frames of one type verbatim.
  *
- * The gate's `measure()` reads `session.requestHeader()?.config.{provider,model}` and
- * `llm.resolveModelInfo(...).context.contextWindow`. A shape mismatch there makes every
- * step fall open with no trace, which is indistinguishable from "the gate never fired
- * because nothing ever crossed 80%". Only real frames can settle which one it is.
+ * The shapes that matter here are read from these frames rather than assumed:
+ * `request/context` carries the resolved `contextWindow`, `request/header` carries
+ * `{header:{config:…}}`, and the usage counters live on whichever frame happens to
+ * carry them. A shape mismatch makes every reading silently absent, which is
+ * indistinguishable from "nothing ever crossed the line" — only real frames settle it.
  */
 const DUMP = flag('--dump');
 
@@ -88,15 +91,12 @@ function walk(dir, out = []) {
  * Only frames *about* a context summary, never a frame that merely quotes the words.
  *
  * The first version of this probe matched the whole line, so a `tool/result` holding
- * this repository's own source (which contains `code-compact-gate` and `compaction`)
- * counted as evidence that the gate had fired. Measured 2026-10-03: 28 such "gate
- * traces" in a session where the gate never ran. A frame counts only when the frame's
- * type is about summarization, or when a message carries the gate's own source kind.
+ * this repository's own source (which contains `compaction` and `summariz*`) counted as
+ * evidence that a compaction had happened. Measured 2026-10-03: 28 such false hits in a
+ * session where nothing compacted. A frame counts only when its *type* is about
+ * summarization — parse the line into a frame first, then match the type.
  */
 const COMPACTION_TYPE = /(^|[/-])(compaction|summary|summariz)/i;
-const GATE_SOURCE = 'code-compact-gate';
-/** The gate's own notice marker, which only its runtime output carries. */
-const GATE_MARKER = '[code-compact-gate]';
 
 /** One session log -> the evidence a human would want before believing a claim. */
 function inspect(file) {
@@ -104,7 +104,6 @@ function inspect(file) {
   const lines = text.split('\n').filter((line) => line.trim().length > 0);
   const types = new Map();
   const compactionHits = [];
-  const gateHits = [];
   let requests = 0;
   let parseErrors = 0;
   const leak = [];
@@ -113,11 +112,10 @@ function inspect(file) {
   /**
    * The window the host itself resolved, read from every `request/context` frame.
    *
-   * This is the number the whole gate hangs on: `gateRatio * contextWindow` is the
-   * occupancy at which the gate asks, and `dsh-compaction-basic` computes its own
-   * threshold from the same value. The probe suite never reads it — every check
-   * drives a stub with a hand-picked 100,000 — so a mismatch between the stub's
-   * window and the installed one is invisible to all 30 checks.
+   * This is the number every occupancy reading depends on: a threshold is computed from
+   * it, and `dsh-compaction-basic` derives its own line from the same value. A stub with a
+   * hand-picked 100,000 makes a mismatch with the installed window invisible — which is
+   * exactly why this probe reads the real one.
    */
   const windows = new Map();
 
@@ -166,19 +164,6 @@ function inspect(file) {
     if (COMPACTION_TYPE.test(type))
       compactionHits.push({ index, type, at: Number(frame?.time), sample: line.slice(0, 160) });
 
-    // A gate trace is a frame the gate itself produced, never a frame about the gate.
-    if (data?.message?.source?.kind === GATE_SOURCE || data?.source?.kind === GATE_SOURCE) {
-      gateHits.push({ index, type, at: Number(frame?.time), sample: line.slice(0, 300) });
-    } else if (line.includes(GATE_MARKER)) {
-      const at = line.indexOf(GATE_MARKER);
-      gateHits.push({
-        index,
-        type,
-        at: Number(frame?.time),
-        sample: line.slice(Math.max(0, at - 60), at + 240),
-      });
-    }
-
     if (/request/i.test(type)) requests += 1;
   }
   return {
@@ -198,15 +183,13 @@ function inspect(file) {
         ? usage.maxPrompt / Math.max(...windows.keys())
         : undefined,
     compactionHits: compactionHits.length,
-    compactionAfterGate: compactionHits.filter((hit) => Number.isFinite(hit.at) && hit.at >= SINCE),
+    compactionSince: compactionHits.filter((hit) => Number.isFinite(hit.at) && hit.at >= SINCE),
     compactionByType: Object.fromEntries(
       [...compactionHits.reduce((map, hit) => map.set(hit.type, (map.get(hit.type) ?? 0) + 1), new Map()).entries()].sort(
         (a, b) => b[1] - a[1],
       ),
     ),
     compactionSamples: compactionHits.slice(0, 4),
-    gateHits: gateHits.length,
-    gateSamples: gateHits.slice(0, 4),
     dumped: dumped.slice(0, 2),
     unparsedCompactionLines: leak.slice(0, 3),
   };
@@ -259,16 +242,13 @@ for (const entry of report) {
     `    peak occupancy:        ${entry.maxOccupancy === undefined ? 'unknown' : `${(entry.maxOccupancy * 100).toFixed(2)}% of ${Math.max(...Object.keys(entry.windows).map(Number))}`}`,
   );
   console.log(`    compaction frames:     ${entry.compactionHits} ${JSON.stringify(entry.compactionByType)}`);
-  console.log(`    compaction AFTER ${new Date(SINCE).toISOString()}: ${entry.compactionAfterGate?.length ?? 0}`);
-  console.log(`    gate traces:           ${entry.gateHits}`);
+  console.log(`    compaction AFTER ${new Date(SINCE).toISOString()}: ${entry.compactionSince?.length ?? 0}`);
   for (const hit of entry.compactionSamples) console.log(`      ${stamp(hit.at)} [${hit.type} #${hit.index}] ${hit.sample}`);
-  if (entry.gateHits > 0)
-    for (const hit of entry.gateSamples) console.log(`      GATE ${stamp(hit.at)} [${hit.type} #${hit.index}] ${hit.sample}`);
 }
 
 /**
- * The verdict this probe exists for: sessions that really compacted while the gate
- * was mounted, and whether any of them kept a trace of the gate being asked first.
+ * The verdict this probe exists for: sessions that really compacted after the cutover, and
+ * how full their windows actually got before it happened.
  */
 if (DUMP !== undefined) {
   console.log(`\n=== dump of ${DUMP} frames (first two per log)`);
@@ -277,12 +257,12 @@ if (DUMP !== undefined) {
   }
 }
 
-const eligible = report.filter((entry) => (entry.compactionAfterGate?.length ?? 0) > 0);
+const eligible = report.filter((entry) => (entry.compactionSince?.length ?? 0) > 0);
 const ranked = report
   .filter((entry) => typeof entry.maxOccupancy === 'number')
   .sort((a, b) => b.maxOccupancy - a.maxOccupancy)
   .slice(0, 5);
-console.log(`\n=== verdict (gate mounted since ${new Date(SINCE).toISOString()})`);
+console.log(`\n=== verdict (cutover at ${new Date(SINCE).toISOString()})`);
 console.log(`logs read: ${report.length}`);
 console.log('fullest windows ever recorded (occupancy of the biggest prompt against the resolved window):');
 for (const entry of ranked) {
@@ -290,26 +270,23 @@ for (const entry of ranked) {
     `  ${(entry.maxOccupancy * 100).toFixed(1)}%  peak ${entry.usage.maxPrompt} of ${Math.max(...Object.keys(entry.windows).map(Number))}  ${entry.file.replace(STORE, '~')}`,
   );
 }
-console.log(`sessions that compacted while the gate was mounted: ${eligible.length}`);
+console.log(`sessions that compacted after the cutover: ${eligible.length}`);
 for (const entry of eligible) {
   console.log(
-    `  ${entry.file.replace(STORE, '~')}\n     compaction frames after mount: ${entry.compactionAfterGate.length}, gate traces: ${entry.gateHits}, biggest prompt: ${entry.usage?.maxPrompt ?? 0}`,
+    `  ${entry.file.replace(STORE, '~')}\n     compaction frames after cutover: ${entry.compactionSince.length}, biggest prompt: ${entry.usage?.maxPrompt ?? 0}`,
   );
 }
 console.log(
   eligible.length === 0
-    ? 'NO EVIDENCE EITHER WAY: no recorded session compacted after the gate was mounted.'
-    : eligible.every((entry) => entry.gateHits === 0)
-      ? 'FINDING: compaction ran in a mounted-gate session with no gate trace at all.'
-      : 'gate traces exist alongside post-mount compaction; inspect them above.',
+    ? 'NO EVIDENCE EITHER WAY: no recorded session compacted after the cutover.'
+    : 'sessions compacted after the cutover; the frames above are the record of when and how full they were.',
 );
 
 const totals = report.reduce(
   (acc, entry) => ({
     logs: acc.logs + (entry.error === undefined ? 1 : 0),
     compaction: acc.compaction + (entry.compactionHits ?? 0),
-    gate: acc.gate + (entry.gateHits ?? 0),
   }),
-  { logs: 0, compaction: 0, gate: 0 },
+  { logs: 0, compaction: 0 },
 );
-console.log(`\nsummary: ${totals.logs} log(s), ${totals.compaction} compaction-ish frame(s), ${totals.gate} gate trace(s)`);
+console.log(`\nsummary: ${totals.logs} log(s), ${totals.compaction} compaction-ish frame(s)`);

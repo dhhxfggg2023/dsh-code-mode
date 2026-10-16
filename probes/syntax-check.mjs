@@ -21,15 +21,25 @@ import { fileURLToPath } from 'node:url';
 
 const PKG = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FILES = [
-  'lib/compact-gate.js',
+  // The module a plain-node probe imports directly, and the ledger-derived checkpoint the
+  // compaction row mounts. `compact-gate.js`/`compact-policy.js` were here until 2026-10-11, when
+  // the gate was deleted; `recite.js` is the ledger feature that used to live in the gate's file,
+  // and it is parsed here for the same reason the gate's pair was: a probe drives it without a
+  // host, so a parse error in it must not be discoverable only by running that probe.
+  'lib/recite.js',
+  'lib/compact-summary.js',
   // `ledger.js` is the largest module here and the one most edits land in, so a
   // parser that skipped it would miss exactly the file most likely to break.
   'lib/ledger.js',
   'lib/pit-guard.js',
   'lib/tool-record.js',
   'lib/tool-brief.js',
-  'probes/compact-gate-probe.mjs',
-  'probes/handover-grant-probe.mjs',
+  // `prompt.js` holds the whole code-ledger section — the text that sits in EVERY request's
+  // cached prefix — and it was absent from this list until 2026-10-11, the day a bullet was
+  // appended to it. A parse error there is the most expensive one this package can ship: the
+  // prefix changes anyway, so the cost is only discovered as a re-send. The section is a
+  // template literal, which is exactly the shape a parser must be asked about.
+  'lib/prompt.js',
   'probes/journal-rotation-probe.mjs',
   'probes/write-rule-probe.mjs',
   'probes/brief-full-probe.mjs',
@@ -37,6 +47,7 @@ const FILES = [
   'probes/pit-liveness.mjs',
   'probes/debt-audit.mjs',
   'probes/utf8-check.mjs',
+  'probes/context-cost.mjs',
 ];
 
 /** The machine-readable shape every probe offers, so a parent reads "could not run". */

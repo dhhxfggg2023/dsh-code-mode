@@ -4,7 +4,7 @@
  * The audit (a subagent read all 2331 lines) reported three CRITICAL and six MAJOR
  * defects. A finding is a claim until something runs it, so this probe drives each
  * mechanical claim against the real library and reports **what actually happened**,
- * pass or fail. It is written the way `handover-grant-probe.mjs` is: plain node, no
+ * pass or fail. It is written the way `pit-fire-probe.mjs` is: plain node, no
  * host, because `ledger.js` imports nothing but node builtins.
  *
  * Every fixture goes to a temp dir (the convention in probes/README.md) and the

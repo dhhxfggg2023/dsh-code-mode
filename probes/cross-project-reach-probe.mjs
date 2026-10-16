@@ -21,13 +21,26 @@
  *
  * Checks, with the control in each direction:
  *   R1 the scan runs and reports structured reachability at all.
- *   R2 the real roots verdict is UNREACHABLE (`reachable: false`), with exactly one distinct root.
+ *   R2 the fold is what separates a phantom from a real promotion: the raw scan reports
+ *      phantoms, no promotion in the folded list rests on a single distinct root, and folding
+ *      never invents a root (`distinctRoots <= rootsScanned`).
  *   R3 the raw scan does report phantoms — if this ever becomes 0, the fold is either working
- *      in the library or the journal stopped disagreeing with itself; either way R4's premise
+ *      in the library or the journal stopped disagreeing with itself; either way R2/R4's premise
  *      must be re-derived rather than assumed.
- *   R4 folding removes them: phantomPromotions > 0 while `promotions` is empty.
+ *   R4 no promotion survives folding on a single root, and every promotion names ≥2 — the two
+ *      directions of the same invariant.
  *   R5 control, other direction: with a second ledged root actually scanned, `reachable` is
  *      true and the verdict is no longer UNREACHABLE.
+ *
+ * **Re-derived 2026-10-16, and why.** R2/R4 used to assert the machine's *population* —
+ * `reachable: false` with exactly one distinct root, and therefore an empty promotion list.
+ * That premise was true when this was written (2026-10-06: one ledged project) and is not any
+ * more: `siblingProjects` also scans `projectStoreDir()`, and the 2026-10-10 migration left
+ * real siblings there, so the same run now reports **7** distinct roots and 43 promotions. The
+ * fold itself did not change — `phantomPromotions` is still 4, so it has not moved into
+ * `crossProjectTriggers`. What was stale was the assertion, not the behaviour, and the checks
+ * now measure the fold (which is what this probe is for) instead of the machine's inventory.
+ * `R5` is the control that keeps the "reachable" branch exercised either way.
  *
  * Run: `node probes/cross-project-reach-probe.mjs`
  */
@@ -47,6 +60,57 @@ fs.mkdirSync(path.join(fixture, '.dsh-code'), { recursive: true });
 fs.writeFileSync(
   path.join(fixture, '.dsh-code', 'mistakes.md'),
   '## 2026-01-01 · fixture pit for the reach probe\n- trigger: probe-fixture-never-matches\n- do not repeat: nothing; this fixture exists only to give the scan a second ledged root\n',
+  'utf8',
+);
+
+/**
+ * A fixture that carries **both** cases in its own journal, so the fold can be measured without
+ * the developer's real ledger being the premise.
+ *
+ * `R2`/`R3`/`R4` used to read the phantom count off the scan of *this repository*, which made
+ * them a statement about whatever the local journal happened to contain: measured 2026-10-16,
+ * `node probes/debt-audit.mjs` redirects `DSH_CODE_GLOBAL_DIR` to a scratch dir, the real
+ * siblings disappeared from `siblingProjects()`, the phantom count went to 0 and both checks
+ * went red — in the audit's channel only. A check is only a check if it is hermetic against the
+ * machine it happens to run on (the rule this repository wrote down after `guard-probe`'s
+ * redirect landed inside the block it was testing). So the fixture supplies the evidence:
+ *
+ *   - `PHANTOM-RULE` is hit in `E:/x/one` and `E:\x\one` — one directory, two spellings, which
+ *     the raw scan calls cross-project and the fold must collapse to a single root.
+ *   - `REAL-RULE` is hit in `E:/x/one` and `E:/x/two` — two genuinely distinct roots, which must
+ *     survive the fold as a promotion.
+ *
+ * Both land in one journal, so a single `--roots <fixture>` run exercises the fold in both
+ * directions at once, on any machine.
+ */
+const phantomDir = path.join(root, 'phantom-and-real');
+fs.mkdirSync(path.join(phantomDir, '.dsh-code'), { recursive: true });
+fs.writeFileSync(
+  path.join(phantomDir, '.dsh-code', 'mistakes.md'),
+  '## 2026-01-01 · phantom-and-real fixture\n- trigger: probe-fixture-never-matches\n- do not repeat: nothing; this fixture only supplies trigger_hit records\n',
+  'utf8',
+);
+const hits = [
+  { heading: 'PHANTOM-RULE', root: 'E:/x/one' },
+  { heading: 'PHANTOM-RULE', root: 'E:\\x\\one' },
+  { heading: 'REAL-RULE', root: 'E:/x/one' },
+  { heading: 'REAL-RULE', root: 'E:/x/two' },
+];
+fs.writeFileSync(
+  path.join(phantomDir, '.dsh-code', 'journal.jsonl'),
+  `${hits
+    .map((hit, index) =>
+      JSON.stringify({
+        ts: `2026-01-01T00:00:0${index}.000Z`,
+        session: 'sess-reach-fixture',
+        kind: 'trigger_hit',
+        heading: hit.heading,
+        source: 'fixture',
+        root: hit.root,
+        cmd: 'probe-fixture-never-matches',
+      }),
+    )
+    .join('\n')}\n`,
   'utf8',
 );
 
@@ -78,6 +142,7 @@ function runReport(extraRoots) {
 
 const base = runReport(undefined);
 const extra = runReport(fixture);
+const foldRun = runReport(phantomDir);
 
 const reach = (result) => result.parsed?.crossProjectReach;
 const checks = [
@@ -89,21 +154,27 @@ const checks = [
   },
   {
     id: 'R2',
-    what: 'real roots: UNREACHABLE is now backed by exactly one distinct root',
-    pass: reach(base)?.reachable === false && reach(base)?.distinctRoots === 1,
-    evidence: `reachable=${reach(base)?.reachable} distinctRoots=${reach(base)?.distinctRoots}`,
+    what: 'the fold collapses one directory spelled twice, and leaves two genuinely distinct roots standing',
+    pass:
+      (foldRun.parsed?.promotions ?? []).some((rule) => rule.heading === 'REAL-RULE') &&
+      !(foldRun.parsed?.promotions ?? []).some((rule) => rule.heading === 'PHANTOM-RULE'),
+    evidence: `REAL-RULE kept=${(foldRun.parsed?.promotions ?? []).some((rule) => rule.heading === 'REAL-RULE')} PHANTOM-RULE kept=${(foldRun.parsed?.promotions ?? []).some((rule) => rule.heading === 'PHANTOM-RULE')} phantomPromotions=${reach(foldRun)?.phantomPromotions}`,
   },
   {
     id: 'R3',
-    what: 'the raw scan does report phantoms (same dir, two spellings) — the premise of the fold',
-    pass: (reach(base)?.phantomPromotions ?? 0) > 0,
-    evidence: `phantomPromotions=${reach(base)?.phantomPromotions} promotions=${base.parsed?.promotions?.length}`,
+    what: 'the raw scan does report the phantom (same dir, two spellings) — the premise of the fold',
+    pass: (reach(foldRun)?.phantomPromotions ?? 0) === (reach(base)?.phantomPromotions ?? 0) + 1,
+    evidence: `phantomPromotions base=${reach(base)?.phantomPromotions} with-fixture=${reach(foldRun)?.phantomPromotions} (the fixture must add exactly one)`,
   },
   {
     id: 'R4',
-    what: 'folding leaves no promotion standing while the phantoms are counted',
-    pass: (base.parsed?.promotions?.length ?? -1) === 0 && (reach(base)?.phantomPromotions ?? 0) > 0,
-    evidence: `promotions=[${(base.parsed?.promotions ?? []).map((rule) => rule.heading.slice(0, 40)).join('; ')}] phantom=${reach(base)?.phantomPromotions}`,
+    what: 'folding never invents a root and never leaves a single-root promotion standing, on this machine too',
+    pass:
+      (reach(base)?.distinctRoots ?? 0) <= (reach(base)?.rootsScanned ?? 0) &&
+      (base.parsed?.promotions ?? []).every((rule) => (rule.roots ?? []).length > 1) &&
+      (base.parsed?.promotions?.length ?? -1) ===
+        (base.parsed?.promotions ?? []).filter((rule) => (rule.roots ?? []).length > 1).length,
+    evidence: `promotions=${base.parsed?.promotions?.length} distinctRoots=${reach(base)?.distinctRoots} rootsScanned=${reach(base)?.rootsScanned} singleRootPromotions=${(base.parsed?.promotions ?? []).filter((rule) => (rule.roots ?? []).length <= 1).length}`,
   },
   {
     id: 'R5',

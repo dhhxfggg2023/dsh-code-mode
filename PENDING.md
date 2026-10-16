@@ -6,6 +6,14 @@
 
 ## 当前判据状态（2026-10-06 实测，`node probes/debt-audit.mjs`）
 
+> **状态（2026-10-16）：本文四件已全部落地。** `debt-audit` 现在 **23/23**、`"failed": []`。
+> 第一件（会话分桶的真 bug）已按下面的修法修好——但**修法与本文写的不完全一样**：本文建议用
+> `[...new Set(...)].sort()` 取最近会话，那是**字典序**，`sess-oldest`/`sess-middle`/`sess-newest`
+> 这种 fixture 名字下会选错；实际实现改成按**债务自己的 `ts`** 排序取最新（自包含，不依赖
+> journal 顺序也不依赖当前会话 id）。第二件（`guard-probe` 的 `E2`）与第三件（`K10`）见下：
+> `E2` 在本会话跑时**已经是绿的**，第三件的 `K10` **从来不是红的**——红的是 `J6`，根因与第一件相同。
+> 第四件（`dedupeRoots` 挪进库）仍未做，见文末。本文按原样保留为历史。
+
 `debt-audit` **19/23**，四个子探针各差 1–2 条：
 
 | 探针 | 结果 | 原因 | 性质 |
@@ -13,7 +21,7 @@
 | `journal-rotation-probe.mjs` | 4/5（`J3` 红） | 见下"第一件"的**真 bug** | **真回归** |
 | `handover-derive-probe.mjs` | 19/21（`N8`/`N8b` 红） | 同上（这两个是我新加的检查，就是为抓它） | **真回归** |
 | `guard-probe.mjs` | 43/45（`E2` ×2 红） | `E2` 断言的是**旧文案** `does not name those commands`，而这轮**故意**把它换成了 `unsettleable, not unpaid` 的说法 | 断言陈旧 |
-| `pit-guard-probe.mjs` | 35/36（`K10` 红） | **未定位**。但 `pit-fire-probe` 的 `B4` 在普通 node 上跑通了**同一条**路径（`recordMistake(safeCase)` → 真 handler → 通知里出现 safe case），见下 | 待查 |
+| `pit-guard-probe.mjs` | 36/36 | **2026-10-16 已定位并修好**：`K10` 从来不是红的那条——红的是 `J6`，而它红的根因在 `lib/ledger.js` 的 `unrecordedMistakes()`（会话分桶用 `sessionOrderBefore()` 推断，当前会话不在 journal 里时把债务在结算之前就判成旧的）。修法见本文 §第一件的修法（同一根因）。`K10` 与 `pit-fire-probe` 的 `B4` 都一直是绿的 |
 
 **所以顺序是：先修下面第一件（真 bug），再更新 `E2`，最后查 `K10`。**
 
