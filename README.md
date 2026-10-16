@@ -1,5 +1,9 @@
 # 编程模式（Code Mode）— DSH 第五个 agent 预设
 
+> **本项目完全由 AI 生成**（代码、文档、判据，以及每一轮决定）。没有任何一行是人工先写好再让 AI 补的，
+> 也没有人逐行审阅过全部实现。它能用是因为有一批判据钉住它，不是因为有人看过它——
+> 而判据本身也是 AI 写的。请按这个前提评估它。
+
 把「这个项目怎么跑、踩过哪些坑、正在做什么、刚才那步有没有证据」写进账本，
 并在你动手的**前后**自动读它、写它、必要时拦你。
 
@@ -32,18 +36,126 @@
 | `code_record` | 记账。五种：`project` / `progress` / `decision` / `mistake` / `verified`；`scope` 决定写哪一本 |
 | `code_verify` | 跑命令 + 断言期望输出 + 落 journal。**期望未命中时即使 exit 0 也判失败** |
 
-**两条腿**
+**四条腿**
 
-- `code-pit-guard` —— 动手**之前**按两个账本反查：改文件按 `files:` 命中路径段，跑命令按 `trigger:` 正则匹配命令行。默认只通知不拦；条目里写了 `hard block: N` 才真拦（第一次仍只提醒）。
-- `code-gate` —— 改了文件一条命令没跑就说了「done」→ 轮内提醒一次 + 落一笔**跨会话**的未验证债，下一次简报顶出来。
+| 插件行 | 干什么 |
+| --- | --- |
+| `code-prompt` | 在 system prompt 加 `## Project ledger`（账本协议）+ `## Working habits`（八条真正付过钱的教训） |
+| `code-pit-guard` | 动手**之前**按两个账本反查：改文件按 `files:` 命中路径段，跑命令按 `trigger:` 正则匹配命令行 |
+| `code-gate` | 改了文件一条命令没跑就说了「done」→ 轮内提醒 + 落一笔**跨会话**的未验证债，下一次简报顶出来 |
+| `code-recite` | 每隔几步把 `tasks.json` 的在飞任务重述进对话。只读任务板，读不到对话，所以编不出叙事 |
 
-**一条线**
+---
 
-- `code-recite` —— 每隔几步把 `tasks.json` 的在飞任务重述进对话。**只读任务板**，读不到对话，所以编不出叙事；最坏是过时，而且它会说自己过时。`reciteEverySteps: 0` 关掉。
+## 详细功能
 
-**一段提示**
+### 一、`code_brief`（`lib/tool-brief.js`）
 
-- `code-prompt` 在 system prompt 里加 `## Project ledger`（账本协议）与 `## Working habits`（八条真正让这个项目付过钱的教训）。
+开局读账本并交代背景。这段不是全文，而是**按重要性分配预算的选集**——
+
+八个段各有权重与上限：`project`(6,1700)、`global`(12,1100)、`journal`(5,1100)、
+`unverified`(12,1600)、`mistake_debt`(8,900)、`board`(5,900)、`mistakes`(16,1400)、
+`decisions`(16,1400)。默认预算 4,000 字符；装不下时**不是静默截断**——
+
+- 每个被丢掉的段落都写进正文，并通过 `omittedSections` 字段回报；
+- 被窗口切过的段落要么保留**完整条目**、要么说明丢了几条；
+- `code_brief({full: true})` 走无上限路径（预算足够时每段取自己的 ceiling）。
+
+其它行为：
+
+- `topic` 参数按文件/症状/标题片段/`trigger:` 从**两个账本**检索并读回完整条目；
+- 会报出这一段距上次 `code_brief` 变了没有（记长度 + 摘要 `digest`）；
+- `## Runtime` 段给出账本目录、机器账本目录、本会话 token 占用；
+- 只读。读函数一个字节都不写账本。
+
+### 二、`code_record`（`lib/tool-record.js`）
+
+五种记账动作：
+
+| kind | 写什么 | 特别注意 |
+| --- | --- | --- |
+| `project` | 这个项目怎么跑、怎么摆 | `patch` 合并进 `project.json` |
+| `progress` | 任务移动 | 支持按标题/裸 slug/完整 id 命中；`status:"done"` 会检查**本会话**有没有真实验证 |
+| `decision` | 定了什么、否掉什么 | 支持 `supersedes` 顶掉旧条目（旧条目标 `- superseded by:` 而不是删） |
+| `mistake` | 症状 / 根因 / 修法 / 涉及文件 / 触发正则 / 别再这么干 | 写入前编译 `trigger`；同族重复会要求改记到既有条目 |
+| `verified` | 一条**声称**跑过某命令 | journal 里写 `claimed: true`，**不算证据** |
+
+写侧的两个告警：条目超 1,600 字符会警告；既没写「哪个文件」也没写「匹配什么命令」的条目会被指出来——
+因为那意味着它永远无法在动手前被找到。`scope="global"` 与 `kind="progress"` 组合会被拒（任务属于项目）。
+
+### 三、`code_verify`（`lib/tool-verify.js`）
+
+跑命令并断言期望输出，然后把退出码与输出写进 journal。
+
+- 走 `ctx.shell` 而非 `child_process`，所以它套用**会话自己的 sandbox policy 与超时上限**；
+- `expect` 支持子串或 `re:` 正则；**期望未命中时即使 exit 0 也判失败**；
+- 被 sandbox 拒、runner 崩、超时中断都算失败，并在结果里附上定性标记；
+- 这是唯一能在会话里留下「证据」的动作——其它命令只是「跑过」。
+
+### 四、`code-pit-guard`（`lib/pit-guard.js` + `lib/pattern-matcher.js` + `lib/entry-fields.js`）
+
+账本的第三条腿：mistakes 由 `code_record` 写、由 `code_brief` 读，
+但在**决策的那一刻**没有任何东西查它们——这一个查。
+
+**文件侧**（`tools/pre-execute`）：遍历两个 mistakes 源，只认 `entry.files` 里的**路径段**命中
+（不做子串猜测）。命中即推 `do not repeat` 原文，并写一条 `file_hit` journal 事件。
+改了 `lib/*.js` 或 `cordis.patch.yml` 时会额外记一条「需要重启才生效」待办。
+
+**命令侧**：`entry.trigger` 是正则，拿它匹配**原始命令**与**空白折叠后**的命令各一次。
+
+**`trigger:` 不会挂住会话**（`lib/pattern-matcher.js`）：正则可以从账本文件进来，而 JS 没有正则超时。
+所以内联预算 40 ms，之后交给 worker 线程跑，**250 ms** 后放弃并视为**不匹配**
+——绝不挂住 `pre-execute`。超时的坑不挡命令，但调用方会被告知。
+
+**safe case 机制**：一个写宽的 trigger 会在安全情形反复响，而收窄 trigger 表达不出
+「命令里有没有引号」这类前提。所以条目可以写 `- safe case: …`，通知里以
+`safe case (check this first):` 插在 `do not repeat` 之后。
+
+**`hard block: N`**：默认只通知不拦。条目里声明了 `hard block: N` 才真拦——
+**第一次命中照旧只提醒，第 N 次才真的拒绝执行**，并说明引的是哪条规则、这是本会话第几次。
+三条豁免：没有 `hard`、`DSH_CODE_PIT_HARD=0`、以及该条同时带非空 `trigger:` 时不许拒绝编辑。
+声明写坏时照旧放行——这条路径唯一危险的方向是「卡死」。
+
+**聚类**：一次编辑最多可命中 14 条（实测）。命中 ≥2 条时合并成**一条**通知
+（每条规则一行、条数写在开头、指向完整条目），单条命中仍走完整通知。
+
+**字段读取只有一个主人**（`lib/entry-fields.js`）：这个读取器曾被复制到八处，
+主人被加宽（全角分隔符、中文标签）后副本全部说错，两件仪器报「0 of 4 条 safe case」而真调用点读得到全部。
+
+### 五、`code-gate`（`lib/gate-verify.js`）
+
+DSH 没有自带的那一道门，管三件事（全是建议性的，不拦任何调用）：
+
+1. **轮内建议** —— 一次编辑过了 3 次工具调用还没跑任何东西，下一步前给一条通知；
+2. **持久记忆** —— 回合结束时改了东西却什么都没跑 → 追加到项目 journal，下一次 `code_brief` 顶出来；
+3. **证据而非活动** —— 只是*跑过*的命令曾算作证明；现在只有 `code_verify`（自己记了退出码与输出）算静默收尾，
+   其它命令留下一条「跑了命令但什么都没记」的债。
+
+### 六、`code-recite`（`lib/recite.js`）
+
+每隔 6 步（`reciteEverySteps` 可调，`0` 关掉）往对话里插一条从 `tasks.json` 派生的在飞任务提醒，
+附在引擎决定**之后**。它只读任务板——不读对话、不读 journal，所以**编不出叙事**；
+最坏是过时，而它会在同一句里说「如果那已经不是你在做的事，用 `code_record(kind="progress")` 移走它」。
+
+### 七、压缩：本模式只有一个意见
+
+`compaction-basic` 行挂的是 `lib/compact-summary.js`（引擎的子类）。
+引擎真要压缩时拿到的不是模型写的摘要，而是 `lib/ledger.js` 的 `handover()` 派生出来的账本交接，
+**零模型调用**（实测「让引擎自己压」的代价是单次请求 `uncached = 637,706`，新会话首请求只要 `17,394`）。
+
+`summarize()` 三条路径：
+
+- 账本有内容 → 返回 `INJECT_HEAD` + 账本派生交接。`INJECT_HEAD` 明说「中段是**没了**，不是被总结了」，
+  并点名 `code_brief` 才是记忆；
+- 账本为空或读不出 → 返回同样明说的 stub，**仍然零模型调用**，并告诉会话怎么让下一次免费；
+- `DSH_CODE_MODEL_COMPACTION=allow`（break-glass）→ 才落到引擎自己的模型摘要器。
+
+### 八、`code-budget`（`lib/budget.js`）
+
+- **事前拒绝**：`read` 一个 >256 KB 的文件且没带 `offset`/`limit` → 硬拒，并告知大小与 token 估算
+  （带 `offset`/`limit` 的读一律放行）；
+- **事后裁剪**：超长结果按头 12,000 / 尾 4,000 字符裁，并用 `NOTE_RESERVE = 320` 给丢弃标记预留位置，
+  绝不把标记本身挤掉。
 
 ---
 
