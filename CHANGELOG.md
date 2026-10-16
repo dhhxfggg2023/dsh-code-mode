@@ -1,12 +1,17 @@
 # 变更记录
 
-本文件只记**对使用者可见**的变化。内部判据的通过数变化记在 `HANDOVER.md` 与 `TESTING.md`。
+本文件只记**对使用者可见**的变化。
 
 ## 0.1.0 — 2026-10-16
 
 首个可安装的发布形态：补齐了对标其他 DSH 插件的包字段（`license`、`engines`、
 `dsh.engines` / `dsh.compatibility`、`README.md` / `LICENSE` 进 `files`），
 `private: true` 保留（不上传插件商店，只走 `link:` 安装）。
+
+**发布范围 = 只有运行时**：仓库里只有 `lib/`、`cordis.patch.yml` 与面向使用者的文档
+（`README` / `INSTALL` / `OVERVIEW` / `CHANGELOG` / `LICENSE`）。判据集 `probes/`、
+`TESTING.md`、`DESIGN.md`、`LESSONS.md`、`HANDOVER.md` 是维护这个模式用的，
+**留在维护用的 checkout 里，不进仓库**。
 
 ### 移除
 
@@ -39,4 +44,5 @@
 
 ### 判据
 
-`debt-audit` 20/23 → **23/23，`"failed": []`**。全量见 [TESTING.md](./TESTING.md)。
+`debt-audit` 20/23 → **23/23，`"failed": []`**。判据集与逐条结果在维护用的 checkout 里
+（`TESTING.md`、`probes/README.md`），不随发布走。

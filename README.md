@@ -220,11 +220,7 @@ DSH 没有自带的那一道门，管三件事（全是建议性的，不拦任�
 | | |
 | --- | --- |
 | [OVERVIEW.md](./OVERVIEW.md) | 面向使用者的总览：十个机制各自管什么、边界在哪 |
-| [DESIGN.md](./DESIGN.md) | 为什么这么设计：四个病、确定性注入、两条不可让步原则 |
 | [INSTALL.md](./INSTALL.md) | 安装、扩展、以及「看起来像坏其实是正常」的四类 |
-| [TESTING.md](./TESTING.md) | 60+ 条判据怎么跑，两条通道各自能跑哪些 |
-| [HANDOVER.md](./HANDOVER.md) | 给下一个维护者：先做这五件事、铁律 13 条 |
-| [LESSONS.md](./LESSONS.md) | 一天里修掉的 5 个真缺陷，与四条比 bug 更贵的流程教训 |
 
 ## 许可
 

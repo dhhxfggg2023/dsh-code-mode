@@ -51,10 +51,7 @@
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
-    "DESIGN.md",
     "INSTALL.md",
-    "LESSONS.md",
-    "TESTING.md",
-    "HANDOVER.md"
+    "OVERVIEW.md"
   ]
 }

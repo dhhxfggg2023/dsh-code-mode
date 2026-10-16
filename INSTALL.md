@@ -23,10 +23,8 @@ mode id = `code`，显示名「编程模式」由 preset 声明自带（内置 l
 | 条目字段 | `lib/entry-fields.js` | 纯函数库（无 loader 导出，**不能**作为 plugin 行注册）：账本条目里 `- symptom:` / `- files:` / `- trigger:` / `- safe case:` 这些字段的**唯一**读取者（`entryField(block, labels)` + `FIELD_SPELLINGS`，兼容 ASCII 与全角冒号/括号）。`lib/pit-guard.js` 与需要读条目的探针都 import 它；2026-10-10 之前同一段读取器被复制到八处，其中一件仪器靠在 `pit-guard.js` 的源码文本里抠正则来"检查副本没漂移"，于是永远落后于主人、并在真账本上把真实的 `safe case:` 行报成读不到 |
 | 自动压缩 | `lib/compact-summary.js` 的构造函数 | **不覆盖 `auto`**（2026-10-11 起）：构造函数原样把 config 交给引擎（`super(ctx, config)`），所以本模式用的是 harness 原生的自动压缩——`compaction-basic` 行的 `auto: true` 是它真正读到的值。曾经在这里强制 `auto: false`（2026-10-10，用户要求「完全禁止自动压缩上下文」），2026-10-11 用户撤回了那条要求：压缩是 DSH 自带的能力，这个 preset 不再对它有自己的意见。**为什么这个开关必须在模块里而不是配置里**：`compaction-basic` 是所有 preset 共用的行 id，而 profile patch 是**全局层**（按 id 覆盖、在每个 bundle 层之后生效），写在那里的 `auto` 会连带改掉 standard/ptc/minimal——2026-10-10 实测发生过，所以当时的范围靠构造而不靠配置；现在这条历史留着，是因为任何人想再动这个键都必须先知道它 |
 | 压缩检查点 | `lib/compact-summary.js` | **不是库，是一个插件行**：它挂在预设的 `compaction-basic` 行上（`name: 'dsh-code-mode/lib/compact-summary.js'`），是内置引擎的子类，只改写 `summarize()` 这一个口子——压缩**何时**发生是引擎自己的事，但压缩**写成什么**由这里决定：返回**账本派生的交接**（`lib/ledger.js` 的 `handover()`），而不是把整段对话喂给模型去总结。所以压缩本身**零模型调用**（实测那次"让引擎自己压"的代价是单次请求 `uncached=637,706`）。账本为空或读不出时返回一段**明说"中段没了、没有任何东西替代它"**的 stub，仍然零模型调用；唯一的模型出口是 `DSH_CODE_MODEL_COMPACTION=allow`（break-glass）。判据：`probes/no-model-compaction-probe.mjs`（10/10：账本有东西走交接、账本空走 stub、只有 break-glass 才调模型——三件事各自断言，因为两条路径**都返回文本**，不种 marker 就分不出"拒绝总结"与"用模型总结了"） |
-| 判据 | `probes/` | 验证工具集，见 `probes/README.md` |
+| 判据 | `probes/` | 验证工具集（**只在维护这个模式的 checkout 里**，不随发布走），见 `probes/README.md` |
 | 能力总览 | `OVERVIEW.md` | 给使用者看的一份「它会做什么」总览：十个能力、两层账本的分法、以及边界（哪些是声称、哪些是实测） |
-| 无坐标条目分类 | `AUDIT-inert-entries.md` | 一次具体处置的记录：机器账本里 42 条「既没 `trigger:` 也没 `files:`」的条目按"属于这台机器还是属于某个项目"分了类——23 条已就地标注 `- applies:`、12 条待补坐标、3 条本就属于项目层。**未执行的部分也写明了**（没搬进别的项目、也没让 `brief` 过滤） |
-| 实战教训 | `LESSONS.md` | 这个模式自己踩出来的五个真缺陷与四条流程教训 |
 
 项目账本落在**项目内** `.dsh-code/`：`project.json`、`tasks.json`、`decisions.md`、`mistakes.md`、`journal.jsonl`。
 机器账本落在**用户主目录** `~/.dsh-code/`（同名同格式，无 `tasks.json`）：只装「换个项目还会咬你」的事实，见下节。
@@ -61,7 +59,7 @@ mode id = `code`，显示名「编程模式」由 preset 声明自带（内置 l
 
    ⚠️ 判空要用 `[string]::IsNullOrEmpty($i.LinkType)`：属性不存在时是 `$null`，`-ne ''` 会把普通目录误判成链接。
 
-3. **重启 DSH**。preset 行会热加载（`dsh.profile.patchReload: live`），但**子插件模块只在挂载时 import 一次** —— 改 `lib/*.js` 后必须重启进程才能生效（这条害过一整天，见 `LESSONS.md` 第二节）。
+3. **重启 DSH**。preset 行会热加载（`dsh.profile.patchReload: live`），但**子插件模块只在挂载时 import 一次** —— 改 `lib/*.js` 后必须重启进程才能生效（这条害过一整天）。
 
 ## 关键坑：外部包为什么能 import 内建的 `@deepseek-ai/*`
 

@@ -42,7 +42,7 @@ const flag = (name) => {
  * another project (recorded before the preset existed) has 1 frame and 0 hits.
  *
  * The default is unchanged — newest log — so existing callers and the `[PASS]` line in
- * TESTING.md behave exactly as before.
+ * TESTING.md (maintenance checkout only) behave exactly as before.
  */
 const ONLY_PATH = flag('--path');
 

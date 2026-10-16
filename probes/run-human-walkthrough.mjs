@@ -2,6 +2,7 @@
 /**
  * run-human-walkthrough.mjs — drive the two "human walkthrough" rounds of
  * TESTING.md 场景 3 by hand, without the GUI, and print every observable fact.
+ * (TESTING.md lives in the maintenance checkout, not in the published package.)
  *
  * WHY THIS EXISTS: I (the agent in the GUI session) could not run the rounds
  * myself, for two separate reasons, and neither of them is a bug in this
