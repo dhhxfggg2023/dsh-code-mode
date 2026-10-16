@@ -54,3 +54,16 @@ probes/.diag-*.mjs
 # for a file that does not exist is a claim about the tree that quietly stops being true. The
 # two new probes (`pattern-budget-probe`, `repeat-identity-probe`) keep their scratch under
 # os.tmpdir(), so nothing here needs to grow for them.
+
+# Development-process records: dated investigations, plans and audits written while
+# deciding what the mode should do. They name files that no longer exist, cite the
+# dates and the instructions they came from, and none of it describes what runs.
+# Untracked; the working copies stay on disk because they are the evidence for
+# decisions the git log only summarises.
+AUDIT-inert-entries.md
+AUDIT-restated-values.md
+INVESTIGATION-compaction.md
+LESSONS.md
+PENDING.md
+PLAN-effect-audit.md
+PLAN-handover-cutover.md
