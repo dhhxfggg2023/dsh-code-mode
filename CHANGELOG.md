@@ -10,27 +10,22 @@
 
 ### 移除
 
-- **压缩闸门整体删除**（用户裁决 2026-10-11）。原先在 60% 提醒、75% 弹卡三选一
-  （压缩 / 继续 / 写转接），并从 50% 占用起修剪超大工具结果。压缩的**时机**交还
-  harness 原生行为。
-  - 按「责任」而非「载体」划范围，救下两样东西：**在飞任务复述** → 新建 `lib/recite.js`，
-    **折叠定价** → 新建 `lib/compaction.js`（后者于 2026-10-16 二次删除，见下）。
-  - 随之删除的探针：`compact-gate-probe.mjs`、`gate-ahead-of-engine.mjs`、
-    `gate-live-line.mjs`、`gate-chance.mjs`、`handover-grant-probe.mjs`。
-- **billion-context 联动面删除**（用户裁决 2026-10-16）：`lib/bili-cache.js`
-  （`## Runtime` 的命中率一行）、`lib/compaction.js`（折叠定价）、
-  `probes/fold-gate.mjs`、`probes/bili-*.mjs`，以及从 billion-context 抽出的源码树
-  `probes/src/`、`probes/kernel/`。`lib/prompt.js` 的第七条 Working habit
-  （整条折叠经济学）一并删除。
+- **压缩闸门整体删除**。原先在 60% 提醒、75% 弹卡三选一（压缩 / 继续 / 写转接），
+  并从 50% 占用起修剪超大工具结果。压缩的**时机**交还 harness 原生行为。
+  按「责任」而非「载体」划范围，住在同一文件里的**在飞任务复述**被救了下来，
+  独立成 `lib/recite.js`（插 `code-recite`）。
+- **billion-context 联动面删除**：`lib/bili-cache.js`（`## Runtime` 的命中率一行）、
+  `lib/compaction.js`（折叠定价）、`probes/fold-gate.mjs`、`probes/bili-*.mjs`，
+  以及从 billion-context 抽出的源码树 `probes/src/`、`probes/kernel/`。
+  `lib/prompt.js` 的第七条 Working habit（整条折叠经济学）一并删除。
 - 两个一次性迁移脚本：`probes/record-session-outcome.mjs`、
   `probes/cleanup-migrated-ledgers.mjs`（按构造带绝对路径，无人引用）。
 
 ### 恢复
 
-- **自动压缩恢复为 harness 原生行为**。2026-10-10 到 10-11 之间曾在模块构造函数里
-  强制 `auto: false`；用户撤回该指令后构造函数不再覆盖 `auto`，值重新归预设配置
+- **自动压缩恢复为 harness 原生行为**：构造函数不再覆盖 `auto`，值归预设配置
   （`compaction-basic` 行 `auto: true`）。
-- 仍然有效、**没有**被撤回的那条：**压缩不许把整段对话交给模型一次性写摘要**。
+- 仍然有效、没有被推翻的那条：**压缩不许把整段对话交给模型一次性写摘要**。
   引擎真要压缩时拿到的是 `lib/ledger.js` 的 `handover()` 派生交接，零模型调用。
 
 ### 修复
@@ -41,7 +36,7 @@
   `handover-derive-probe` N8/N8b 因此长红。
 - `probes/cross-project-reach-probe.mjs` 的 R2/R4 改为断言**折叠本身**（自带
   phantom fixture），不再断言「本机有几个兄弟项目」——原判据断言的是机器的人口，
-  2026-10-10 账本迁移后本机从 1 个根变成 7 个，判据随之变红而折叠逻辑一行没动。
+  账本迁到共享 store 之后兄弟项目数量变了，判据随之变红而折叠逻辑一行没动。
 
 ### 判据
 

@@ -9,7 +9,7 @@ mode id = `code`，显示名「编程模式」由 preset 声明自带（内置 l
 
 | 部分 | 文件 | 作用 |
 | --- | --- | --- |
-| preset 声明 | `cordis.patch.yml` | 一行 `@deepseek-ai/dsh-agent-preset`，`config.id: code`，19 段标准子插件照抄 standard，另加 `code-memory` 组（8 行）。**内置的 `compaction` 组不再有任何本项目自己的行**（2026-10-11 删掉 `code-compact-gate` 之后） |
+| preset 声明 | `cordis.patch.yml` | 一行 `@deepseek-ai/dsh-agent-preset`，`config.id: code`，19 段标准子插件照抄 standard，另加 `code-memory` 组（8 行）。**内置的 `compaction` 组不再有任何本项目自己的行** |
 | 提示段 | `lib/prompt.js` | `ctx.systemPrompt.section({ name: 'code-ledger', order: -50 })`：账本协议 + Working habits 八条 |
 | 开局简报 | `lib/tool-brief.js` | 工具 `code_brief`：项目/命令/任务板/近期记录/相关踩坑/未验证债。按段分配预算，任何省略都写进正文并回报 `omittedSections` |
 | 记账 | `lib/tool-record.js` | 工具 `code_record`，`kind ∈ project｜progress｜decision｜mistake｜verified`；`status:"done"` 会检查本会话有无真实验证 |
