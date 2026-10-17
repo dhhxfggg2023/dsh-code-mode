@@ -18,7 +18,13 @@
           - id: persona
             name: '@deepseek-ai/dsh-persona'
             config:
-              suffix: Your working directory is {{cwd}}.
+              # No `suffix:` here. 0.2.1 interpolates `{{…}}` strictly and registers
+              # only `provider` / `model`, so the old
+              # `suffix: Your working directory is {{cwd}}.` failed every turn in
+              # this mode with "unknown prompt variable". The working directory
+              # reaches the model as a runtime-context section
+              # (CONTEXT_ORDERS.WORKING_DIRECTORY), which is where the built-in
+              # standard preset leaves it too.
               prefix: You are a coding agent powered by the {{model}} model, working on a large, long-lived codebase.
           - id: agent-instructions
             name: '@deepseek-ai/dsh-agent-instructions'

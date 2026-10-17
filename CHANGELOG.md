@@ -2,6 +2,23 @@
 
 本文件只记**对使用者可见**的变化。
 
+## 0.1.1 — 2026-10-17
+
+**兼容 DSH `0.2.1-rc.1`**（自 `0.2.0-rc.2` 升级；只升级 DSH、不升本包会坏）。
+
+- **删掉 persona 的 `suffix: Your working directory is {{cwd}}.`**。0.2.1 起提示词变量**严格插值**，
+  只注册 `provider` 与 `model`——`cwd` 被移除，工作目录改由 working-directory 的 runtime
+  context 提供。旧写法让本模式**每一轮都在系统提示词组装阶段失败**
+  （`unknown prompt variable "{{cwd}}"`，模型一个请求都收不到），而换到别的预设一切正常，
+  所以很容易误判成账本或工作区坏了。**这一条不修，模式等于不可用。**
+- **补齐 0.2.1 内置 `standard` 新增的三行**：`time-context`、`tool-schedule`、
+  `tool-plugin-market`（与内置一致，默认关），维持「standard 严格超集」这条判据。
+- `dsh.compatibility.dshReleases` 记入 `0.2.1-rc.1`: `compatible`。
+
+判据（全部跑在 0.2.1-rc.1 运行时上）：`acceptance-probe` 24/24、`gate-probe` 39/39、
+`pit-guard-probe` 36/36、`guard-probe` 45/45、`budget-probe` 29/29、`debt-audit` 23/23、
+`check-yaml` 与 `build-preset --check` 通过。
+
 ## 0.1.0 — 2026-10-16
 
 首个可安装的发布形态：补齐了对标其他 DSH 插件的包字段（`license`、`engines`、
