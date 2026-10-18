@@ -2,6 +2,24 @@
 
 本文件只记**对使用者可见**的变化。
 
+## 0.1.6 — 2026-10-18
+
+**账本按条显示，不再是一整块文本**：mistakes / decisions 的每个 `##` 条目、tasks 的每个
+任务、project.json 的每个字段、journal 的每一行都单独成行；默认显示条目，需要看原文时点
+「原文」切回整块文本。
+
+- 宿主侧 `readLedgerFile` 现在返回 `entries`（`lib/ledger-admin.js` 的
+  `markdownEntryList` / `taskEntryList` / `projectEntryList` / `journalEntryList`）：
+  markdown 条目解析出 `日期 / 标题 / symptom / cause / fix / files / do not repeat` 等字段，
+  tasks 带 `进行中 / 已完成` 状态，project 是键值行，journal 是一行一个 JSON 记录；
+- 页面用官方客户端 primitives 的 `Button` / `Input`，布局改用 shell 的
+  `--dsw-alias-*` 设计变量（文字、分隔线、surface、危险色、等宽字体），不再手写
+  一套灰边框按钮；标签页、文件页签、行内操作都跟设置页其余部分同一套控件；
+- 机器账本 / 项目账本两页、单账本删除、回收站恢复/purge 的行为保持不变；
+- 当前项目自己的账本仍不可删除，行内会显示原因。
+
+`probes/ledger-admin-probe.mjs` 仍为 8/8（entries 是新增字段，不改变原有读写/删除判定）。
+
 ## 0.1.5 — 2026-10-18
 
 **设置页的账本控制台按「机器账本 / 项目账本」分成两个标签页**，每个账本都能单独查看
