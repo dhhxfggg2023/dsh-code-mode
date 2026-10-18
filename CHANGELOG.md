@@ -2,6 +2,26 @@
 
 本文件只记**对使用者可见**的变化。
 
+## 0.1.7 — 2026-10-18
+
+**账本内容默认折叠，并且每一条都能单独删除。**
+
+- 账本列表不再自动展开第一个账本；每个账本点「查看内容」才打开。
+- 账本里的条目默认只显示标题 + 日期/状态 + 一行摘要，点条目左侧的 `▸` 才展开
+  `symptom / cause / fix / files / do not repeat` 等字段；journal 展开才显示原始 JSON 行。
+- **单条删除**：每条右侧有「删除」。mistakes/decisions 删一个 `##` 块，tasks 删一个任务，
+  project 删一个字段（`version` / `createdAt` / `updatedAt` 不提供删除），journal 删一行。
+  删除前宿主会把原文件复制到该账本自己的 `.entry-trash/<file>.<时间戳>`，旧字节仍可手工取回；
+  账本有活锁（有会话正在写）时拒绝，避免覆盖正在追加的记录。
+- 宿主新增 `removeEntry(id, file, index, options)`（`lib/ledger-admin.js`）与
+  `/action` 的 `remove-entry` 动作（`lib/web-routes.js`）；journal 的 index 按页面显示的
+  最近 400 行映射回具体轮转段和行号。
+- 顺带把 `billion-context` 与 `dsh-web-search-free` 加回 profile 的 bundle 列表：billion-context
+  的 bundle 会给内置预设注入 `biliBasicCompactionPolicy`，所以同时移除了 profile patch 里
+  `- id: bili-native / disabled: true` 这条覆盖，否则 4 个内置预设会一直 pending。
+- `probes/ledger-admin-probe.mjs` 新增 L9（单条删除后计数归零、`.entry-trash` 里有备份、
+  越界 index 被拒），现在 **9/9** 通过。
+
 ## 0.1.6 — 2026-10-18
 
 **账本按条显示，不再是一整块文本**：mistakes / decisions 的每个 `##` 条目、tasks 的每个
