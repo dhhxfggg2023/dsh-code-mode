@@ -226,7 +226,15 @@
     # settings page has to answer whenever the shell is up — including for projects nobody is
     # working in. Same shape the wallpaper plugin documents for its own host row.
     #
+    # The row name MUST be the bare package name, not `dsh-code-mode/lib/web-routes.js`.
+    # `dsh-client-modules` only resolves a row's package.json when the Loader row is a bare
+    # specifier (or a path); a subpath specifier makes `locatePkgJson` return early
+    # (lib/index.js:765-766), the `dsh.client` declaration is never read, and `lib/client.js`
+    # never reaches the shell — the host routes keep working, so the failure looks like
+    # "the settings page just does not appear". `exports["."]` in package.json therefore
+    # points at `lib/web-routes.js`, which is what the Loader mounts for this row.
+    #
     # It injects `webServer`, so a profile with no HTTP server (headless/TUI) never mounts
     # it; the browser half arrives through `dsh.client` in package.json.
     - id: code-ledger-admin
-      name: 'dsh-code-mode/lib/web-routes.js'
+      name: 'dsh-code-mode'

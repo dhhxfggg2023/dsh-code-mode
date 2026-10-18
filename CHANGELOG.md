@@ -2,6 +2,23 @@
 
 本文件只记**对使用者可见**的变化。
 
+## 0.1.3 — 2026-10-18
+
+**修复 0.1.2 的设置页根本没出现**：0.1.2 的顶层宿主行名是 `dsh-code-mode/lib/web-routes.js`
+（子路径），而 `@deepseek-ai/dsh-client-modules` 只在 Loader 行是**裸包名**（或路径）时才解析该行的
+`package.json`（`lib/index.js:765-766` 直接返回）。于是 `package.json` 里的 `dsh.client` 从未被读取，
+`lib/client.js` 从未进入启动清单——宿主路由 `/code-mode/ledgers` 照常 200，设置页却永远没有这一节，
+重启多少次都一样。这一条不修，0.1.2 的功能等于不存在。
+
+- 宿主行 `code-ledger-admin` 的 `name` 改为裸 `dsh-code-mode`；
+- `package.json` 的 `main` 与 `exports["."]` 改指 `./lib/web-routes.js`（`lib/ledger.js` 仍在
+  `"./lib/*.js"` 子路径下可导入，预设的 `code-memory` 各行不受影响）；
+- `dsh.client.inject` 从已不存在的 `@deepseek-ai/dsh-client-runtime` 改为
+  `@deepseek-ai/dsh-client-ui-settings`（0.2.1 里 `settings.section` 的声明者，dshmarket 同款写法）。
+
+验收判据不用打开 GUI：重启后 `GET /plugins/events` 的启动清单里出现 `dsh-code-mode` 条目，
+再把该条目的 `rev` 代入 `plugins/??dsh-code-mode/client.js&rev=…` 能取到 JS。
+
 ## 0.1.2 — 2026-10-18
 
 **新增「编程模式账本」设置页**：在 DSH 设置页里列出这台机器上的全部账本，按项目分组，
