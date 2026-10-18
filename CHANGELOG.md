@@ -2,6 +2,29 @@
 
 本文件只记**对使用者可见**的变化。
 
+## 0.1.2 — 2026-10-18
+
+**新增「编程模式账本」设置页**：在 DSH 设置页里列出这台机器上的全部账本，按项目分组，
+能看到每个账本的健康标记（`store-orphan`、`no-project-root`、`not-pointed-at`、
+`central-dangling`、`repo-copy-also-live`、`locked`、`machine`、`trash`），
+能读 mistakes / decisions / 任务板 / journal，也能**移入回收站**并恢复。
+
+- **删除默认可逆**：账本是「这个项目付过什么代价」的证据，所以默认动作是 `rename` 到
+  旁边 `<名字>.trashed-<时间戳>`（同卷，不会 `EXDEV`），恢复后逐字节一致；
+  唯一不可逆的 `purge` 只对回收站里的对象生效，且要**手输目录名**。
+- **服务端硬拒**：机器账本（只读、永不可删）、当前工作目录自己的账本、带活锁的账本、
+  以及任何不在本次清单里的 id。浏览器只能传服务端发出的 id，永远传不了路径。
+- **一条顶层 host 行** `code-ledger-admin`（`lib/web-routes.js`，`inject: ['webServer']`），
+  故意不放进 `code-memory` 组——否则设置页只在跑编程模式的会话里存在。
+  路由只回答回环来源、校验同源，变更请求要带 `x-code-mode-token`。
+- **浏览器半是手写的** `lib/client.js`（`exports["./client"]` + `dsh.client`）：
+  用宿主基线模块表里的 `react`，不引入 tsdown/esbuild，本包仍然零构建步骤。
+- 判据 `probes/ledger-admin-probe.mjs` 8/8（纯 node，fixture 指到 `os.tmpdir()`）；
+  它第一次真跑时抓出三个真缺陷：`CENTRAL` 指向的是**项目**路径而非 store 路径，
+  导致所有已迁移项目被误标 `not-pointed-at`；`restore` 把 `trash-manifest.json`
+  带回了活账本；仓库账本被移走后，`siblingProjects` 再也看不见它，回收站里的那份无法恢复。
+- `debt-audit` 23/23、`build-preset --check` PASS、`guard-probe` 45/45 不变。
+
 ## 0.1.1 — 2026-10-17
 
 **兼容 DSH `0.2.1-rc.1`**（自 `0.2.0-rc.2` 升级；只升级 DSH、不升本包会坏）。

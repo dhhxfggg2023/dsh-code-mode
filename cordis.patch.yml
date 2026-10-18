@@ -218,3 +218,15 @@
           - id: tool-plugin-market
             name: '@deepseek-ai/dsh-plugin-market/tools'
             disabled: true
+    # The ledger console's host half: same-origin HTTP routes the settings page fetches
+    # (`GET <base>/ledgers`, `GET <base>/ledger`, `POST <base>/action`).
+    #
+    # A TOP-LEVEL row rather than a row inside this preset, and that is load-bearing: rows
+    # under `preset-code` exist only while a session is running the `code` preset, while the
+    # settings page has to answer whenever the shell is up — including for projects nobody is
+    # working in. Same shape the wallpaper plugin documents for its own host row.
+    #
+    # It injects `webServer`, so a profile with no HTTP server (headless/TUI) never mounts
+    # it; the browser half arrives through `dsh.client` in package.json.
+    - id: code-ledger-admin
+      name: 'dsh-code-mode/lib/web-routes.js'
