@@ -2,6 +2,24 @@
 
 本文件只记**对使用者可见**的变化。
 
+## 0.1.4 — 2026-10-18
+
+**修复 0.1.3 引入的启动崩溃**：0.1.3 把宿主行名改成裸包名后，`dsh.client` 第一次被
+`@deepseek-ai/dsh-client-modules` 读到，`lib/client.js` 第一次真正进入浏览器启动清单。
+它的 `apply()` 在 `ctx.slots` 还不存在时就访问 `ctx.slots.inject(...)`，直接抛
+`TypeError`；Web 启动审计把**任何**未激活的客户端条目都当成致命错误
+（`web boot: N entries did not activate`），于是整个外壳变成「Failed to load plugins」——
+桌面端表现为一进 DSH 就崩，必须停掉所有第三方插件才能进入。
+
+- `lib/client.js` 现在声明 `exports.inject = ['slots']`，与所有内置 `settings.section`
+  贡献者（`dsh-client-ui-settings-plugins`、`dshmarket`）一致：`slots` 由
+  `dsh-client-ui-renderer` 提供，声明依赖后 `apply` 会等它就绪，不会再抢跑；
+- `apply()` 整段包了 try/catch：一个设置页再出问题也只损失这一页，不会把整个
+  会话黑屏。dshmarket 的 `mountMarket` 也是同样的隔离方式。
+
+验收判据：用 `dsh --profile <测试 profile> --port 0 --no-open` 起一个 Web 实例，
+浏览器打开后外壳正常，预设选择器里有「编程模式」（标准 / PTC / 极简 / 创造 / 编程 共五个）。
+
 ## 0.1.3 — 2026-10-18
 
 **修复 0.1.2 的设置页根本没出现**：0.1.2 的顶层宿主行名是 `dsh-code-mode/lib/web-routes.js`
