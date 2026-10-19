@@ -1,6 +1,6 @@
 {
   "name": "dsh-code-mode",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "private": true,
   "description": "编程模式：为大型项目的创造与维护而设的 DSH 自带模式 — 项目账本、开局简报、反重复门禁。",
   "type": "module",

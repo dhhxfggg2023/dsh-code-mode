@@ -2,6 +2,19 @@
 
 本文件只记**对使用者可见**的变化。
 
+## 0.1.13 — 2026-10-19
+
+**修正：一次只读的问询不再凭空建出账本。**
+
+- `code_brief` 在一个还没有账本的项目里必须回答「No ledger yet at …」并提示用
+  `code_record(kind="project")` 起个头。上一版为了判断"有没有账本"调用了会创建目录的
+  解析函数：**问一次就多出一个空账本**，那句开场提示从此再也不会出现。
+- 现在改成先做**纯解析**（账本该在哪），再看那个目录里有没有账本文件；问询不写任何字节。
+  `code_brief`、会话开始记录、简报形状记录三处只读路径都因此真的只读了。
+- 探针：`guard-probe.mjs` 的 D2/B3 就是钉这一条的（上一版 43/45，现在 **45/45**）；
+  `pit-guard-probe.mjs`、`acceptance-probe.mjs`、`ledger-store-probe.mjs` 也按"账本在
+  `~/.dsh/code/projects/`"重写了夹具与断言，`node probes/debt-audit.mjs` **23/23** 全绿。
+
 ## 0.1.12 — 2026-10-19
 
 **账本收进 `~/.dsh/code/projects/`，项目树里不再新建 `.dsh-code/`。**
