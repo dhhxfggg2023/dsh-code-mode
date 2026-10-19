@@ -57,8 +57,8 @@
 
 ## 七、两层账本怎么分
 
-- **项目账本**在项目里 `.dsh-code/`：`project.json`、`tasks.json`、`decisions.md`、`mistakes.md`、`journal.jsonl`。前四个随项目进 git，`journal.jsonl` 排除；
-- **机器账本**在 `~/.dsh-code/`：装"换个项目还会咬你"的事实（shell 怪癖、沙箱规则、通道差异），每个项目都会读到；
+- **项目账本**在 `~/.dsh/code/projects/<项目 slug>-<哈希>/`：`project.json`、`tasks.json`、`decisions.md`、`mistakes.md`、`journal.jsonl`。一个项目一个文件夹，项目树里**不再新建** `.dsh-code/`；只有 2026-10-18 之前在项目里出生的旧账本仍留在原处（迁移后走 `<项目>/.dsh-code/CENTRAL` 指针，指针在下一次读取时自动消失）；
+- **机器账本**在 `~/.dsh/code/`（同级，无 `projects/`）：装"换个项目还会咬你"的事实（shell 怪癖、沙箱规则、通道差异），每个项目都会读到；
 - 判定标准一句话：**换个项目还会不会咬你？会 → 机器级；不会 → 项目级。**
 
 ## 八、它会统计自己的坑到底有没有用

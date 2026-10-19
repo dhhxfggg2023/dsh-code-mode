@@ -29,8 +29,9 @@ mode id = `code`，显示名「编程模式」由 preset 声明自带（内置 l
 | 判据 | `probes/` | 验证工具集（**只在维护这个模式的 checkout 里**，不随发布走），见 `probes/README.md` |
 | 能力总览 | `OVERVIEW.md` | 给使用者看的一份「它会做什么」总览：十个能力、两层账本的分法、以及边界（哪些是声称、哪些是实测） |
 
-项目账本落在**项目内** `.dsh-code/`：`project.json`、`tasks.json`、`decisions.md`、`mistakes.md`、`journal.jsonl`。
-机器账本落在**用户主目录** `~/.dsh-code/`（同名同格式，无 `tasks.json`）：只装「换个项目还会咬你」的事实，见下节。
+项目账本落在 `~/.dsh/code/projects/<项目 slug>-<哈希>/`：`project.json`、`tasks.json`、`decisions.md`、`mistakes.md`、`journal.jsonl`。一个项目一个文件夹，由里面的 `project-root` 标记认定身份；项目树里**不再新建** `.dsh-code/`。
+2026-10-18 之前在项目里出生的旧账本仍留在原处，迁移后由 `<项目>/.dsh-code/CENTRAL`（内容 `central <项目路径>`）指过去；新代码在下一次读写时认为指针已完成使命并删掉它，空目录一并移除。
+机器账本落在 `~/.dsh/code/`（同级，无 `projects/`；同名同格式，无 `tasks.json`）：只装「换个项目还会咬你」的事实，见下节。
 
 ## 安装（本机现状 = 已安装）
 
@@ -91,9 +92,9 @@ Get-FileHash '<这个包的 checkout>\lib\ledger.js'          # 不一致 = 已�
 
 manifest 改成 `link:` → 确认路径无误后删掉那份**普通目录**副本 → 在 `profiles\desktop` 重跑 `pnpm install` → 复查 `LinkType` 是 `Junction` 且两边 SHA256 一致。
 
-## 机器级账本（`~/.dsh-code/`）
+## 机器级账本（`~/.dsh/code/`）
 
-第二层账本，2026-10-02 加入：装**机器事实**（这台机器上的 shell 怪癖、解释器路径、宿主级拒绝），位置 `~/.dsh-code/`，与 DSH 自己的 `~/.dsh/` 同级。文件与项目账本同名同格式，**没有 `tasks.json`**（工作属于项目，`kind="progress"` 会被拒）。
+第二层账本，2026-10-02 加入：装**机器事实**（这台机器上的 shell 怪癖、解释器路径、宿主级拒绝），位置 `~/.dsh/code/`（2026-10-10 从 `~/.dsh-code/` 搬进来，旧路径只在它还存有账本时被读），与 DSH 自己的 `~/.dsh/profiles/`、`~/.dsh/sessions/` 同级。文件与项目账本同名同格式，**没有 `tasks.json`**（工作属于项目，`kind="progress"` 会被拒）。
 
 为什么需要它：有些坑不属于任何项目，属于**这台机器**。本仓库自己就付过一次学费 —— Windows PowerShell 5.1 把管道里的 `byte[]` 先 stringify 成「每字节十进制值直接拼接」再当文本写，一次毁掉三份文档；这条教训记在项目账本里，下一个仓库还得重付一次。判据很简单：**换个项目还会不会咬你**。
 
